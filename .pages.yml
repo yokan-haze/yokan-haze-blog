@@ -1,0 +1,308 @@
+# Pages CMS 配置 —— 网页后台的界面定义
+# 后台地址：https://app.pagescms.org/
+# 文档：https://pagescms.org/docs/configuration/
+
+media:
+  - name: uploads
+    label: 文章图片
+    input: public/uploads
+    output: /uploads
+    categories: [image]
+    rename: safe
+  - name: gallery
+    label: 相册图片
+    input: public/gallery
+    output: /gallery
+    categories: [image]
+    rename: false
+
+content:
+  # ─────────── 文章 ───────────
+  - name: posts
+    label: 文章
+    type: collection
+    path: src/content/posts
+    format: yaml-frontmatter
+    subfolders: true
+    filename:
+      template: "{year}-{month}-{day}-{primary}.md"
+      field: create
+    view:
+      primary: title
+      sort: published
+      order: desc
+    fields:
+      - name: title
+        label: 标题
+        type: string
+        required: true
+      - name: published
+        label: 发布日期
+        type: date
+        required: true
+        options:
+          format: yyyy-MM-dd
+      - name: description
+        label: 摘要
+        type: text
+        description: 显示在首页卡片和搜索结果里
+      - name: image
+        label: 封面图
+        type: image
+      - name: category
+        label: 分类
+        type: string
+      - name: tags
+        label: 标签
+        type: string
+        list: true
+      - name: series
+        label: 系列
+        type: string
+        description: 同一个系列的文章填相同的名字
+      - name: seriesOrder
+        label: 系列内序号
+        type: number
+      - name: draft
+        label: 存为草稿（不发布）
+        type: boolean
+        default: false
+      - name: pinned
+        label: 置顶
+        type: boolean
+        default: false
+      - name: comment
+        label: 允许评论
+        type: boolean
+        default: true
+      - name: password
+        label: 访问密码
+        type: string
+        description: 留空则公开
+        default: ""
+      - name: body
+        label: 正文
+        type: rich-text
+
+  # ─────────── 动态（碎片日常）───────────
+  - name: dynamic
+    label: 动态
+    type: collection
+    path: src/content/dynamic
+    format: yaml-frontmatter
+    filename: "{year}-{month}-{day}-{hour}{minute}{second}.md"
+    view:
+      primary: published
+      sort: published
+      order: desc
+    fields:
+      - name: published
+        label: 发布时间
+        type: date
+        required: true
+        options:
+          time: true
+          format: "yyyy-MM-dd HH:mm:ss"
+      - name: pinned
+        label: 置顶
+        type: boolean
+        default: false
+      - name: location
+        label: 地点
+        type: string
+      - name: body
+        label: 内容
+        type: rich-text
+
+  # ─────────── 项目 ───────────
+  - name: projects
+    label: 项目
+    type: collection
+    path: src/content/projects
+    format: yaml-frontmatter
+    filename:
+      template: "{primary}.md"
+      field: create
+    view:
+      primary: title
+      sort: published
+      order: desc
+    fields:
+      - name: title
+        label: 项目名称
+        type: string
+        required: true
+      - name: published
+        label: 日期
+        type: date
+        required: true
+        options:
+          format: yyyy-MM-dd
+      - name: description
+        label: 简介
+        type: text
+      - name: image
+        label: 封面图
+        type: image
+      - name: tags
+        label: 标签
+        type: string
+        list: true
+      - name: status
+        label: 状态
+        type: string
+      - name: order
+        label: 排序
+        type: number
+      - name: draft
+        label: 草稿
+        type: boolean
+        default: false
+      - name: link
+        label: 相关链接
+        type: object
+        list: true
+        fields:
+          - name: label
+            label: 名称
+            type: string
+          - name: icon
+            label: 图标
+            type: string
+          - name: value
+            label: 链接
+            type: string
+      - name: body
+        label: 正文
+        type: rich-text
+
+  # ─────────── 相册 ───────────
+  - name: gallery
+    label: 相册
+    type: file
+    path: src/data/gallery.json
+    format: json
+    list: true
+    view:
+      primary: name
+    fields:
+      - name: id
+        label: 目录名
+        type: string
+        required: true
+        pattern: "^[a-z0-9-]+$"
+        description: 只能用小写英文、数字、连字符；图片放在 public/gallery/<目录名>/
+      - name: name
+        label: 相册名称
+        type: string
+        required: true
+      - name: description
+        label: 描述
+        type: text
+      - name: date
+        label: 日期
+        type: string
+      - name: location
+        label: 拍摄地点
+        type: string
+      - name: tags
+        label: 标签
+        type: string
+        list: true
+      - name: cover
+        label: 封面图
+        type: string
+      - name: password
+        label: 访问密码
+        type: string
+      - name: passwordHint
+        label: 密码提示
+        type: string
+
+  # ─────────── 友链 ───────────
+  - name: friends
+    label: 友链
+    type: file
+    path: src/data/friends.json
+    format: json
+    list: true
+    view:
+      primary: title
+    fields:
+      - name: title
+        label: 站点名称
+        type: string
+        required: true
+      - name: imgurl
+        label: 头像链接
+        type: string
+      - name: desc
+        label: 站点描述
+        type: text
+      - name: siteurl
+        label: 站点地址
+        type: string
+      - name: tags
+        label: 标签
+        type: string
+        list: true
+      - name: weight
+        label: 权重
+        type: number
+        description: 数字越大排越前
+        default: 0
+      - name: enabled
+        label: 显示
+        type: boolean
+        default: true
+
+  # ─────────── 页面内容 ───────────
+  - name: pages
+    label: 页面内容
+    type: group
+    items:
+      - name: about
+        label: 关于我
+        type: file
+        path: src/content/spec/about.md
+        format: yaml-frontmatter
+        fields:
+          - name: title
+            label: 页面标题
+            type: string
+          - name: description
+            label: 页面描述
+            type: text
+          - name: body
+            label: 内容
+            type: rich-text
+      - name: friendsPage
+        label: 友链页说明
+        type: file
+        path: src/content/spec/friends.mdx
+        format: yaml-frontmatter
+        fields:
+          - name: title
+            label: 页面标题
+            type: string
+          - name: description
+            label: 页面描述
+            type: text
+          - name: body
+            label: 内容
+            type: rich-text
+      - name: guestbook
+        label: 留言板说明
+        type: file
+        path: src/content/spec/guestbook.md
+        format: yaml-frontmatter
+        fields:
+          - name: title
+            label: 页面标题
+            type: string
+          - name: description
+            label: 页面描述
+            type: text
+          - name: body
+            label: 内容
+            type: rich-text

@@ -1,0 +1,159 @@
+$ astro dev "--host" "127.0.0.1" "--port" "4321"
+12:50:22 [ERROR] [ImageNotFound] Could not find requested image `../images/firefly2.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:5:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:22 [ERROR] [ImageNotFound] Could not find requested image `../images/firefly2.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:5:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:22 [ERROR] [ImageNotFound] Could not find requested image `../images/both-grid.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:2:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:22 [ERROR] ImageNotFound: Could not find requested image `../images/both-grid.avif`. Does it exist?
+    at ResolveIdContext.handler (file:///D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/content/vite-plugin-content-assets.js:42:19)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async ResolveIdContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async TransformPluginContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async normalizeUrl (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28075:22)
+    at async file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28153:30
+    at async Promise.all (index 0)
+    at async TransformPluginContext.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28119:4)
+    at async EnvironmentPluginContainer.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30932:14)
+12:50:22 [ERROR] [ImageNotFound] Could not find requested image `../images/both-grid.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at ResolveIdContext.handler (file:///D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/content/vite-plugin-content-assets.js:42:19)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:23 [ERROR] ImageNotFound: Could not find requested image `../images/both-grid.avif`. Does it exist?
+    at ResolveIdContext.handler (file:///D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/content/vite-plugin-content-assets.js:42:19)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async ResolveIdContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async TransformPluginContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async normalizeUrl (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28075:22)
+    at async file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28153:30
+    at async Promise.all (index 0)
+    at async TransformPluginContext.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28119:4)
+    at async EnvironmentPluginContainer.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30932:14)
+12:50:23 [ERROR] [ImageNotFound] Could not find requested image `../images/both-grid.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:2:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:23 [ERROR] [ImageNotFound] Could not find requested image `../images/left-grid3.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:6:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:23 [ERROR] [ImageNotFound] Could not find requested image `../images/both-grid.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at ResolveIdContext.handler (file:///D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/content/vite-plugin-content-assets.js:42:19)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:23 [ERROR] ImageNotFound: Could not find requested image `../images/both-list.avif`. Does it exist?
+    at ResolveIdContext.handler (file:///D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/content/vite-plugin-content-assets.js:42:19)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async ResolveIdContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async TransformPluginContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async normalizeUrl (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28075:22)
+    at async file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28153:30
+    at async Promise.all (index 1)
+    at async TransformPluginContext.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28119:4)
+    at async EnvironmentPluginContainer.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30932:14)
+12:50:23 [ERROR] [ImageNotFound] Could not find requested image `../images/both-list.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:3:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:23 [ERROR] ImageNotFound: Could not find requested image `../images/both-grid.avif`. Does it exist?
+    at ResolveIdContext.handler (file:///D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/content/vite-plugin-content-assets.js:42:19)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async ResolveIdContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async EnvironmentPluginContainer.resolveId (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30848:19)
+    at async TransformPluginContext.resolve (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:31077:13)
+    at async normalizeUrl (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28075:22)
+    at async file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28153:30
+    at async Promise.all (index 0)
+    at async TransformPluginContext.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:28119:4)
+    at async EnvironmentPluginContainer.transform (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/chunks/node.js:30932:14)
+12:50:23 [ERROR] [ImageNotFound] Could not find requested image `../images/both-grid.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:2:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:23 [ERROR] [ImageNotFound] Could not find requested image `../images/both-list.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at ResolveIdContext.handler (file:///D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/content/vite-plugin-content-assets.js:42:19)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:23 [ERROR] [ImageNotFound] Could not find requested image `../images/both-grid.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:2:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:50:24 [ERROR] [ImageNotFound] Could not find requested image `../images/left-grid3.avif`. Does it exist?
+  Hint:
+    This is often caused by a typo in the image path. Please make sure the file exists, and is spelled correctly.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/image-not-found/
+  Stack trace:
+    at D:/Firefly-blog/.astro/content-assets.mjs:6:36
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:51:29 [ERROR] [vite] transport invoke timed out after 60000ms (data: {"type":"custom","event":"vite:invoke","data":{"name":"fetchModule","id":"send:X1fHJSz6adjBFvgKplSLY","data":["/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/cli/info/infra/pnpm-package-manager.js","D:/Firefly-blog/node_modules/.pnpm/astro@7.3.2_@astrojs+markdo_6af38bba740b2b733cd91a5ee2e279b9/node_modules/astro/dist/cli/info/core/get-package-manager.js",{"cached":false,"startOffset":3}]}})
+12:51:29 [ERROR] [vite] server restart failed
+12:57:45 [ERROR] Vite module runner has been closed.
+  Stack trace:
+    at D:\Firefly-blog\node_modules\.pnpm\vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec\node_modules\vite\dist\node\module-runner.js:1208:26
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:58:08 [ERROR] Vite module runner has been closed.
+  Stack trace:
+    at D:\Firefly-blog\node_modules\.pnpm\vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec\node_modules\vite\dist\node\module-runner.js:1208:26
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:58:45 [ERROR] Vite module runner has been closed.
+  Stack trace:
+    at ModuleRunner.getModuleInformation (file:///D:/Firefly-blog/node_modules/.pnpm/vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec/node_modules/vite/dist/node/module-runner.js:1208:26)
+    [...] See full stack trace in the browser, or rerun with --verbose.
+12:58:54 [ERROR] Vite module runner has been closed.
+  Stack trace:
+    at D:\Firefly-blog\node_modules\.pnpm\vite@8.2.2_@types+node@26.4_e28b0398b5361987b7e89ebfe932caec\node_modules\vite\dist\node\module-runner.js:1208:26
+    [...] See full stack trace in the browser, or rerun with --verbose.

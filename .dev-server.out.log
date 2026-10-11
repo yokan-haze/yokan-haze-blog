@@ -1,0 +1,256 @@
+12:40:13 [vite] connected.
+12:40:30 [types] Generated 1ms
+12:40:30 [vite] connected.
+12:40:30 [content] Syncing content
+12:40:30 [content] Synced content
+ astro  v7.3.2 ready in 91175 ms
+┃ Local    http://127.0.0.1:4321/
+12:40:31 watching for file changes...
+12:40:56 Configuration file updated. Restarting...
+Local icons changed, reloading
+12:40:56 [vite-plugin-svelte] svelte config changed: restarting vite server. - file: D:\Firefly-blog\svelte.config.js
+12:40:56 [vite] changed tsconfig file detected: D:/Firefly-blog/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+12:40:56 [vite] program reload
+12:40:56 [vite] program reload
+12:40:57 [watch] src/config/FooterConfig.html
+12:40:58 [watch] src/config/FooterConfig.html
+12:40:59 [glob-loader] Reloaded data from firefly.md
+12:40:59 [glob-loader] Reloaded data from first.md
+12:40:59 [glob-loader] Reloaded data from katex-math-example.md
+12:40:59 [glob-loader] Reloaded data from markdown-mermaid.md
+12:40:59 [glob-loader] Reloaded data from markdown-plantuml.md
+12:41:00 [glob-loader] Reloaded data from mdx-example.mdx
+12:41:00 [glob-loader] Reloaded data from 2026-07-15-010756.md
+12:41:00 [glob-loader] Reloaded data from 2026-07-15-020613.md
+12:41:00 [glob-loader] Reloaded data from 2026-07-15-021127.md
+12:41:00 [glob-loader] Reloaded data from 2026-07-15-161529.md
+12:41:00 [glob-loader] Reloaded data from friends.mdx
+12:41:00 [glob-loader] Reloaded data from guestbook.md
+12:41:00 [glob-loader] Reloaded data from about.md
+12:41:01 [glob-loader] Reloaded data from draft.md
+12:41:01 [glob-loader] Reloaded data from video.md
+12:41:01 [glob-loader] Reloaded data from example-project.md
+12:41:01 [glob-loader] Reloaded data from encrypted-demo.md
+12:41:01 [glob-loader] Reloaded data from firefly.md
+12:41:01 [glob-loader] Reloaded data from markdown-extended.md
+12:41:02 [glob-loader] Reloaded data from code-examples.md
+12:41:02 [glob-loader] Reloaded data from markdown-tutorial.md
+12:41:02 [vite] connected.
+12:41:02 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:41:02 [glob-loader] Reloaded data from guide/firefly-layout-system.md
+12:41:03 [glob-loader] Reloaded data from guide/firefly-wiki-link.md
+12:41:03 [glob-loader] Reloaded data from guide/index.md
+12:41:05 [vite] connected.
+12:41:05 [vite] server restarted.
+12:41:27 Configuration file updated. Restarting...
+Local icons changed, reloading
+12:41:27 [vite-plugin-svelte] svelte config changed: restarting vite server. - file: D:\Firefly-blog\svelte.config.js
+12:41:27 [vite] changed tsconfig file detected: D:/Firefly-blog/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+12:41:27 [vite] program reload
+12:41:27 [vite] program reload
+12:41:27 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:41:27 [watch] src/config/FooterConfig.html
+12:41:28 [watch] src/config/FooterConfig.html
+12:41:29 [vite] connected.
+12:41:32 [vite] connected.
+12:41:32 [vite] server restarted.
+12:42:43 Configuration file updated. Restarting...
+Local icons changed, reloading
+12:42:43 [vite-plugin-svelte] svelte config changed: restarting vite server. - file: D:\Firefly-blog\svelte.config.js
+12:42:43 [vite] changed tsconfig file detected: D:/Firefly-blog/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+12:42:43 [vite] program reload
+12:42:43 [vite] program reload
+12:42:43 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:42:43 [watch] src/config/FooterConfig.html
+12:42:44 [watch] src/config/FooterConfig.html
+12:42:45 [vite] connected.
+12:42:48 [vite] connected.
+12:42:52 [vite] server restarted.
+12:42:53 Configuration file added. Restarting...
+12:42:54 [vite] connected.
+12:42:54 [vite] connected.
+12:42:54 [vite] server restarted.
+12:45:49 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:46:13 [200] / 385ms
+12:46:26 [200] /friends/ 105ms
+12:46:57 [vite] program reload
+12:46:59 [200] / 45ms
+12:47:02 [200] / 10ms
+12:47:03 [200] /posts/first/ 71ms
+12:47:03 [200] / 9ms
+12:47:03 [302] /booknav/ 43ms
+12:47:03 [404] /404/ 60ms
+12:47:03 [302] /sponsor/ 86ms
+12:47:03 [404] /404/ 9ms
+12:47:03 [200] /gallery/ 50ms
+12:47:03 [200] /dynamic/ 57ms
+12:47:03 [200] /projects/ 51ms
+12:47:03 [200] /friends/ 29ms
+12:47:04 [200] /guestbook/ 54ms
+12:47:04 [200] /about/ 50ms
+12:47:04 [200] /archive/ 47ms
+12:50:02 Configuration file updated. Restarting...
+Local icons changed, reloading
+12:50:02 [vite-plugin-svelte] svelte config changed: restarting vite server. - file: D:\Firefly-blog\svelte.config.js
+12:50:02 [vite] changed tsconfig file detected: D:/Firefly-blog/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+12:50:02 [vite] program reload
+12:50:02 [vite] program reload
+12:50:02 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:50:03 [watch] src/config/FooterConfig.html
+12:50:05 [watch] src/config/FooterConfig.html
+12:50:06 [vite] connected.
+12:50:17 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:50:23 [200] /gallery/ 57ms
+12:50:23 [200] /dynamic/ 64ms
+12:50:23 [200] /archive/ 58ms
+12:50:23 [302] /booknav/ 71ms
+12:50:23 [404] /404/ 49ms
+12:50:23 [302] /sponsor/ 55ms
+12:50:24 [404] /404/ 4ms
+12:50:25 [vite] program reload
+12:50:27 [vite] program reload
+12:50:29 [vite] program reload
+12:50:30 [vite] program reload
+12:50:31 [vite] program reload
+12:50:32 [vite] program reload
+12:50:33 [vite] program reload
+12:50:33 [vite] program reload
+12:50:34 [vite] program reload
+12:50:35 [vite] program reload
+12:50:36 [vite] program reload
+12:50:36 [vite] program reload
+12:50:37 [vite] program reload
+12:50:38 [vite] program reload
+12:50:39 [vite] program reload
+12:50:40 [vite] program reload
+12:50:40 [vite] program reload
+12:50:41 [vite] program reload
+12:50:42 [vite] program reload
+12:50:43 [vite] program reload
+12:50:43 [vite] program reload
+12:50:44 [vite] program reload
+12:50:45 [vite] program reload
+12:50:46 [vite] program reload
+12:50:47 [vite] program reload
+12:50:47 [vite] program reload
+12:50:48 [vite] program reload
+12:50:49 [vite] program reload
+12:50:50 [vite] program reload
+12:50:50 [vite] program reload
+12:50:51 [vite] program reload
+12:50:52 [vite] program reload
+12:50:53 [vite] program reload
+12:50:54 [vite] program reload
+12:50:54 [vite] program reload
+12:50:55 [vite] program reload
+12:50:56 [vite] program reload
+12:50:57 [vite] program reload
+12:50:57 [vite] program reload
+12:50:58 [vite] program reload
+12:50:59 [vite] program reload
+12:51:00 [vite] program reload
+12:51:00 [vite] program reload
+12:51:01 [vite] program reload
+12:51:02 [vite] program reload
+12:51:03 [vite] program reload
+12:51:04 [vite] program reload
+12:51:04 [vite] program reload
+12:51:05 [vite] program reload
+12:51:06 [vite] program reload
+12:51:07 [vite] program reload
+12:51:07 [vite] program reload
+12:51:08 [vite] program reload
+12:51:09 [vite] program reload
+12:51:10 [vite] program reload
+12:51:10 [vite] program reload
+12:51:11 [vite] program reload
+12:51:12 [vite] program reload
+12:51:13 [vite] program reload
+12:51:14 [vite] program reload
+12:51:14 [vite] program reload
+12:51:15 [vite] program reload
+12:51:16 [vite] program reload
+12:51:17 [vite] program reload
+12:51:17 [vite] program reload
+12:51:18 [vite] program reload
+12:51:19 [vite] program reload
+12:51:20 [vite] program reload
+12:51:20 [vite] program reload
+12:51:21 [vite] program reload
+12:51:22 [vite] program reload
+12:51:23 [vite] program reload
+12:51:23 [vite] program reload
+12:51:24 [vite] program reload
+12:51:25 [vite] program reload
+12:51:26 [vite] program reload
+12:51:26 [vite] program reload
+12:51:27 [vite] program reload
+12:51:28 [vite] program reload
+12:52:26 Configuration file removed. Restarting...
+12:52:26 [vite] connected.
+12:52:28 [vite] connected.
+Local icons changed, reloading
+12:52:28 [vite-plugin-svelte] svelte config changed: restarting vite server. - file: D:\Firefly-blog\svelte.config.js
+12:52:28 [vite] changed tsconfig file detected: D:/Firefly-blog/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+12:52:28 [vite] program reload
+12:52:28 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:52:29 [watch] src/config/FooterConfig.html
+12:52:30 [watch] src/config/FooterConfig.html
+12:52:31 [vite] connected.
+12:52:34 [vite] connected.
+12:52:34 [vite] server restarted.
+12:52:34 [vite] Port 4321 is in use, trying another one...
+12:52:34 [vite] server restarted.
+12:54:54 [vite] connected.
+12:54:56 Configuration file added. Restarting...
+12:54:57 [vite] connected.
+12:54:58 [vite] connected.
+12:54:58 [vite] server restarted.
+12:57:45 [astro-icon] Loaded icons from src/icons, fa7-brands, fa7-regular, fa7-solid, material-symbols, mingcute, simple-icons, mdi, svg-spinners
+12:57:52 [200] / 117ms
+12:58:42 [vite] program reload
+12:58:46 [200] / 29ms
+12:58:46 [200] / 6ms
+12:58:46 [200] / 6ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//posts/first/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /posts/first/ 62ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//friends/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /friends/ 5ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//projects/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /projects/ 4ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//gallery/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /gallery/ 5ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//dynamic/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /dynamic/ 5ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//about/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /about/ 5ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//guestbook/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /guestbook/ 5ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//archive/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /archive/ 4ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//booknav/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /booknav/ 5ms
+12:58:46 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `//sponsor/`.
+
+Possible dynamic routes being matched: src/pages/[...page].astro.
+12:58:46 [404] /sponsor/ 4ms
+12:58:54 [200] / 5ms
+[ELIFECYCLE] Command failed with exit code 1.
