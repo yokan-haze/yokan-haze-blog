@@ -24,8 +24,11 @@ content:
     path: src/content/posts
     format: yaml-frontmatter
     subfolders: true
+    # 注意：不要用 {primary} 生成文件名——中文标题 slug 化后为空，
+    # 会产出 "2026-10-11-.md" 这种空 slug 的文件名，网址会很难看。
+    # 改成时间戳保证唯一，同时 field: create 让新建时可以手改文件名。
     filename:
-      template: "{year}-{month}-{day}-{primary}.md"
+      template: "{year}-{month}-{day}-{hour}{minute}{second}.md"
       field: create
     view:
       primary: title
