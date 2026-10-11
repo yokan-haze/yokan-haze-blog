@@ -19,6 +19,7 @@ if "%RUNNING%"=="1" (
 )
 
 if exist ".astro\dev.json" del /q ".astro\dev.json" >nul 2>&1
+if exist ".astro" rmdir /s /q ".astro" >nul 2>&1
 
 echo.
 echo  正在启动本地博客预览（端口 %PORT%）...
