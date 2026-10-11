@@ -18,8 +18,11 @@ if "%RUNNING%"=="1" (
   exit /b
 )
 
+rem 只清内容缓存，保留 .astro\fonts（字体缓存，删了会因 CDN 不通而启动失败）
 if exist ".astro\dev.json" del /q ".astro\dev.json" >nul 2>&1
-if exist ".astro" rmdir /s /q ".astro" >nul 2>&1
+if exist ".astro\data-store.json" del /q ".astro\data-store.json" >nul 2>&1
+if exist ".astro\content-modules.mjs" del /q ".astro\content-modules.mjs" >nul 2>&1
+if exist ".astro\collections" rmdir /s /q ".astro\collections" >nul 2>&1
 
 echo.
 echo  正在启动本地博客预览（端口 %PORT%）...

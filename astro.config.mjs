@@ -354,7 +354,18 @@ export default defineConfig({
 		plugins: [tailwindcss()],
 		server: {
 			watch: {
-				ignored: ["**/package/**", "**/Firefly-docs/**"],
+				ignored: [
+					"**/package/**",
+					"**/Firefly-docs/**",
+					// 编辑器和工具在项目根目录做「原子写入」时会短暂产生 _tmp_* 等临时文件，
+					// 忽略它们，避免 Vite 把这些瞬时文件当作源码变更处理。
+					// 注意：修改本文件或 src/config/*.ts 会触发 Astro 重启（这是正常行为），
+					// 但 Astro 的原地重启不会重新同步内容集合，重启后若出现页面 500/404，
+					// 清掉 .astro/data-store.json 与 .astro/content-modules.mjs 再启动即可。
+					"**/_tmp_*",
+					"**/.~*",
+					"**/*.tmp",
+				],
 			},
 		},
 		resolve: {
