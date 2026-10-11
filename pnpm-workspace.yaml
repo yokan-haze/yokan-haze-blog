@@ -3,3 +3,5 @@ packages:
 allowBuilds:
   esbuild: true
   workerd: true
+patchedDependencies:
+  astro@7.3.2: patches/astro@7.3.2.patch

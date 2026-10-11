@@ -1,0 +1,26 @@
+diff --git a/dist/core/dev/restart.js b/dist/core/dev/restart.js
+index 613392ce02e5cb3c935e92e7a508ce53c532aa29..92e1cb9b3b6beaad5840f5a522855787e3e21527 100644
+--- a/dist/core/dev/restart.js
++++ b/dist/core/dev/restart.js
+@@ -1,3 +1,4 @@
++import { existsSync } from "node:fs";
+ import { fileURLToPath } from "node:url";
+ import * as vite from "vite";
+ import { globalContentLayer } from "../../content/instance.js";
+@@ -147,7 +148,16 @@ async function createContainerWithAutomaticRestart({
+   };
+   function handleChangeRestart(logMsg) {
+     return async function(changedFile) {
++      // ── 自定义补丁 ──────────────────────────────────────────────
++      // 沙箱 / 文件同步工具 / 杀毒软件有时会瞬间把整个项目目录置空再恢复，
++      // 使 Vite 的 watcher 对所有文件误报 unlink。Astro 会据此认为
++      // 「配置文件被删除」并执行原地重启，而原地重启不会重新同步内容集合，
++      // 重启后 /about/ 等页面报 500、文章页报 404。
++      // 因此：若触发重启的文件其实仍存在于磁盘上，判定为误报，跳过重启。
+       if (shouldRestartContainer(restart.container, changedFile)) {
++        if (changedFile && existsSync(changedFile)) {
++          return;
++        }
+         logger.info(null, (logMsg + " Restarting...").trim());
+         const result = await restartContainerInPlace(restart.container);
+         if (result instanceof Error) {
