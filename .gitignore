@@ -54,3 +54,7 @@ _demo-backup/
 *.bak
 *.bak-cms
 
+
+# 主题自带 CI（Cloudflare Pages 会自行构建，无需 GitHub Actions）
+.github/workflows/
+
