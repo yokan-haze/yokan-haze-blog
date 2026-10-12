@@ -1,0 +1,52 @@
+# 自动部署到 Cloudflare Pages
+#
+# 原理：你在 Pages CMS 保存 -> 内容提交到本仓库 -> GitHub 的服务器自动构建 -> 上传到 Cloudflare
+# 全程在 GitHub 的服务器上完成，不依赖你本机开机或网络状况。
+#
+# 需要在仓库里配置一个密钥（Settings -> Secrets and variables -> Actions）：
+#   CLOUDFLARE_API_TOKEN = 在 Cloudflare 创建的 API 令牌
+name: 部署到 Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  # 也支持在 Actions 页面手动触发
+  workflow_dispatch:
+
+# 连续推送时取消上一次未完成的构建，只跑最新的
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建站点
+        run: pnpm build
+
+      - name: 部署到 Cloudflare Pages
+        run: pnpm exec wrangler pages deploy dist --project-name=yokan-haze --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 1fae28eb2e756180542c9542e20b6957

@@ -58,3 +58,15 @@ _demo-backup/
 # 主题自带 CI（Cloudflare Pages 会自行构建，无需 GitHub Actions）
 .github/workflows/
 
+
+# 主题自带 CI（本站不用）
+.github/workflows/biome.yml
+.github/workflows/build.yml
+.github/workflows/deploy.yml
+
+# 本地自动上线脚本（未采用该方案）
+auto-deploy.mjs
+auto-deploy.ps1
+.auto-deploy.lock
+.auto-deploy.log
+.auto-deploy-state.json
