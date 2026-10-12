@@ -134,7 +134,10 @@ export default defineConfig({
 			cache: true,
 			preload: {
 				hover: true,
-				visible: true,
+				// visible 预取会在页面加载后立刻预取视口内所有内部链接：
+				// 首页实测触发 21 条请求 / 852 KiB（解码后约 4.3 MB），且发生在用户零交互时。
+				// 关闭它，只保留 hover 预取（用户意图信号，成本低）。
+				visible: false,
 			},
 			accessibility: true,
 			updateHead: true,

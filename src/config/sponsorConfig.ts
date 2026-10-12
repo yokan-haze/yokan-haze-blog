@@ -25,55 +25,44 @@ export const sponsorConfig: SponsorConfig = {
 		{
 			name: "支付宝",
 			icon: "fa7-brands:alipay",
-			// 收款码图片路径（需要放在 public 目录下）
-			qrCode: "/assets/images/sponsor/alipay.png",
+			// 收款码已移除：原 public/assets/images/sponsor/alipay.png 为上游主题作者素材
+			qrCode: "",
 			link: "",
 			description: "使用 支付宝 扫码打赏",
-			enabled: true,
+			// 本站未配置自己的支付宝收款码，停用（避免出现「空二维码却提示扫码打赏」）
+			enabled: false,
 		},
 		{
 			name: "微信",
 			icon: "fa7-brands:weixin",
-			qrCode: "/assets/images/sponsor/wechat.png",
+			// 收款码已移除：原 public/assets/images/sponsor/wechat.png 为上游主题作者素材
+			qrCode: "",
 			link: "",
 			description: "使用 微信 扫码打赏",
-			enabled: true,
+			// 本站未配置自己的微信收款码，停用（避免出现「空二维码却提示扫码打赏」）
+			enabled: false,
 		},
 		{
 			name: "ko-fi",
 			icon: "simple-icons:kofi",
 			qrCode: "",
-			link: "https://ko-fi.com/cuteleaf",
+			// 已移除指向上游主题作者的收款链接；本站尚未提供自己的链接，先停用
+			link: "",
 			description: "Buy a Coffee for Firefly",
-			enabled: true,
+			enabled: false,
 		},
 		{
 			name: "爱发电",
 			icon: "simple-icons:afdian",
 			qrCode: "",
-			link: "https://ifdian.net/a/cuteleaf",
+			// 已移除指向上游主题作者的收款链接；本站尚未提供自己的链接，先停用
+			link: "",
 			description: "通过 爱发电 进行打赏",
-			enabled: true,
+			enabled: false,
 		},
 	],
 
 	// 打赏者列表（可选）
-	sponsors: [
-		// 示例：已实名打赏者
-		{
-			name: "夏叶",
-			avatar:
-				"https://weavatar.com/avatar/d252655d40d6874417a720bad0a6c5f77f8f6a1fd2f882f8f338402dc37e4190?s=640",
-			amount: "¥50",
-			date: "2025-10-01",
-		},
-
-		// 示例：匿名打赏者
-		{
-			name: "匿名用户",
-			// avatar: "",
-			amount: "¥20",
-			date: "2025-10-01",
-		},
-	],
+	// 已清空：原为上游主题作者的示例打赏者数据。需要展示本站真实打赏者时再填入。
+	sponsors: [],
 };

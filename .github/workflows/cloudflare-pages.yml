@@ -42,6 +42,33 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
+      # 质量闸门：类型/内容集合检查不过就不部署。
+      # 注意：这一步是硬闸门，失败会拦住下面的构建与部署。
+      - name: 类型检查（astro check）
+        run: pnpm astro check
+
+      # 构建期视频压缩需要 ffmpeg（含 libx264）。
+      # ubuntu-24.04 runner 镜像的 apt 预装列表里没有 ffmpeg，所以这里显式安装；
+      # libavcodec-extra 保证 libx264 编码器存在。
+      # 缺失时只告警不失败 —— 压缩脚本会自动跳过，站点仍然构建。
+      - name: 确保 ffmpeg 可用（含 libx264 编码器）
+        shell: bash
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1 \
+             || ! ffmpeg -hide_banner -encoders 2>/dev/null | grep -q 'libx264'; then
+            echo "ffmpeg 或 libx264 缺失，安装中…"
+            sudo apt-get update -qq || true
+            sudo apt-get install -y --no-install-recommends ffmpeg libavcodec-extra \
+              || sudo apt-get install -y --no-install-recommends ffmpeg \
+              || echo "::warning::ffmpeg 安装失败，本次跳过视频压缩（不影响构建与部署）"
+          fi
+          if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q 'libx264'; then
+            ffmpeg -version | head -n 1
+            echo "✅ ffmpeg + libx264 就绪，构建期将压缩 public/assets/videos/*.mp4"
+          else
+            echo "::warning::ffmpeg 缺少 libx264，构建期视频压缩会被跳过（不影响构建与部署）"
+          fi
+
       - name: 构建站点
         run: pnpm build
 
