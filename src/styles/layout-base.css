@@ -90,14 +90,21 @@
     }
   }
   /* overlay / none / fullscreen 非首页：内容从导航栏下方开始 */
-  html[data-wallpaper-mode="overlay"] .content-panel,
   html[data-wallpaper-mode="none"] .content-panel,
   html[data-wallpaper-mode="fullscreen"] body:not(.is-home) .content-panel {
     --content-top: 5.5rem;
   }
-  /* fullscreen 首页 hero：内容推到首屏之下 */
+  /* 透明覆盖模式：普通页面紧跟导航栏；首页留白由 --cfg-overlay-content-top 控制
+     （该变量在 Layout.astro 中按 backgroundWallpaper.overlay.contentTop 注入） */
+  html[data-wallpaper-mode="overlay"] .content-panel {
+    --content-top: 5.5rem;
+  }
+  html[data-wallpaper-mode="overlay"] body.is-home .content-panel {
+    --content-top: var(--cfg-overlay-content-top, 5.5rem);
+  }
+  /* fullscreen 首页 hero：内容推到首屏之下（留白高度由 --cfg-fullscreen-content-top 控制） */
   html[data-wallpaper-mode="fullscreen"] body.is-home .content-panel {
-    --content-top: 100vh;
+    --content-top: var(--cfg-fullscreen-content-top, 100vh);
   }
 
   /* banner wrapper：统一顶到顶部、高 65vh（不再用 -30vh/translateY 抵消；短屏高度由 layout-styles 媒体查询覆盖） */

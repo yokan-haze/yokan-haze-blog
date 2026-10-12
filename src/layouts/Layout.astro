@@ -151,6 +151,13 @@ if (isGeneratedOg) {
 }
 const ogImageAlt = propsOgImageAlt ?? pageTitle;
 
+// 首页内容顶部留白（透明覆盖 / 全屏模式下生效）
+// 主题默认 overlay 是 5.5rem（内容紧贴导航栏，壁纸几乎看不见），
+// 这里把配置值注入成 CSS 变量，由 layout-base.css 里的规则读取。
+const overlayContentTop = backgroundWallpaper.overlay?.contentTop ?? "5.5rem";
+const fullscreenContentTop = backgroundWallpaper.fullscreen?.contentTop ?? "100vh";
+const contentTopCss = `:root{--cfg-overlay-content-top:${overlayContentTop};--cfg-fullscreen-content-top:${fullscreenContentTop};}`;
+
 // 使用固定的banner偏移量，position配置用于图片定位
 ---
 
@@ -161,6 +168,7 @@ const ogImageAlt = propsOgImageAlt ?? pageTitle;
     <style is:inline>
 			@layer properties, theme, base, components, utilities;
 		</style>
+    <style is:global set:html={contentTopCss}></style>
     {analyticsConfig?.googleAnalyticsId && (
             <GoogleAnalytics analyticsId={analyticsConfig.googleAnalyticsId} />
     )}

@@ -99,6 +99,7 @@ export type BackgroundWallpaperConfig = {
 	};
 	// 全屏透明覆盖模式特有配置
 	overlay?: {
+		contentTop?: string; // 首页内容顶部留白，如 "60vh"、"500px"，默认 "5.5rem"（紧跟导航栏）
 		zIndex?: number; // 层级，确保壁纸在合适的层级显示
 		opacity?: number; // 壁纸透明度，0-1之间
 		blur?: number; // 背景模糊程度，单位px
@@ -106,6 +107,7 @@ export type BackgroundWallpaperConfig = {
 	};
 	// 全屏壁纸模式特有配置
 	fullscreen?: {
+		contentTop?: string; // 首页内容顶部留白，默认 "100vh"（整整一屏，即 hero 效果）
 		layout?: FullscreenWallpaperLayout; // 全屏布局：classic 文档流模式，hero 固定全屏首屏模式
 		position?: string; // 壁纸位置，支持CSS object-position的所有值
 		// 全屏壁纸模式的导航栏配置（仅有半透明/动态透明两种）

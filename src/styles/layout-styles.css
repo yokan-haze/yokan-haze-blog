@@ -325,11 +325,22 @@ html[data-wallpaper-mode="overlay"] #wallpaper-wrapper .banner-post-meta-overlay
     display: none !important;
 }
 /* none / overlay：内容区从导航栏下方开始（SSR 按 config banner 渲染时内容在横幅下方） */
-html[data-wallpaper-mode="none"] #content-panel,
+html[data-wallpaper-mode="none"] #content-panel {
+    top: 5.5rem !important;
+    margin-top: 0 !important;
+    min-height: calc(100vh - 5.5rem) !important;
+}
 html[data-wallpaper-mode="overlay"] #content-panel {
     top: 5.5rem !important;
     margin-top: 0 !important;
     min-height: calc(100vh - 5.5rem) !important;
+}
+/* 透明覆盖模式的首页：顶部留白由 --cfg-overlay-content-top 控制，
+   让壁纸在顶部露出一块（该变量在 Layout.astro 按 backgroundWallpaper.overlay.contentTop 注入） */
+html[data-wallpaper-mode="overlay"] body.is-home #content-panel {
+    top: var(--cfg-overlay-content-top, 5.5rem) !important;
+    margin-top: 0 !important;
+    min-height: calc(100vh - var(--cfg-overlay-content-top, 5.5rem)) !important;
 }
 
 /* Swup 占位容器永远为空，任何断点都不得参与布局（勿依赖 hidden 实用类压过几何规则） */
