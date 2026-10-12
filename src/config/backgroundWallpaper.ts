@@ -1,11 +1,11 @@
 import type { BackgroundWallpaperConfig } from "@/types/backgroundWallpaper";
-import videos from "@/data/videos.json";
 import wallpapers from "@/data/wallpapers.json";
 
 // 壁纸列表由 src/data/wallpapers.json 维护，可在 Pages CMS 后台上传和增删。
 // Pages CMS 写入的路径可能是 "/assets/..." 形式，这里统一去掉开头的斜杠，
 // 转成 Astro 需要的 src 相对路径（"assets/..."），从而享受图片自动优化。
-// 视频列表由 src/data/videos.json 维护，可在 Pages CMS 后台上传和增删。
+// 视频列表与壁纸同在一个文件（src/data/wallpapers.json 的 videos 字段），
+// 在 Pages CMS 的「壁纸与背景视频」板块里一起管理。
 // 视频放在 public/ 下（Astro 不处理视频，原样发布），所以这里要的是公共路径 "/assets/videos/x.mp4"。
 const toPublicPath = (list: unknown): string[] =>
 	(Array.isArray(list) ? list : [])
@@ -71,7 +71,7 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 支持单个视频路径（字符串）或多个视频循环（数组，参考上面壁纸配置）
 		// 支持远程视频URL，本地视频请放在 public/assets/videos/ 目录下
 		// playerUrl: "/assets/videos/firefly.mp4",
-		playerUrl: toPublicPath(videos.list),
+		playerUrl: toPublicPath(wallpapers.videos),
 	},
 	// 横幅壁纸和全屏壁纸共享配置
 	common: {

@@ -14,5 +14,8 @@
     "assets/images/MobileWallpaper/m4.avif",
     "assets/images/MobileWallpaper/m5.avif",
     "assets/images/MobileWallpaper/m6.avif"
+  ],
+  "videos": [
+    "/assets/videos/shorekeeper-night.mp4"
   ]
 }
