@@ -1,4 +1,5 @@
-﻿import type { SiteConfig } from "@/types/siteConfig";
+import siteAppearance from "@/data/siteAppearance.json";
+import type { SiteConfig } from "@/types/siteConfig";
 import { resolvePageToggles } from "../utils/page-toggle-utils";
 import { resolveSiteLang } from "../utils/site-config-utils";
 
@@ -42,10 +43,11 @@ const pages = resolvePageToggles({
 
 export const siteConfig: SiteConfig = {
 	// 站点标题
-	title: "yokan-haze",
+	// 由 src/data/siteAppearance.json 的 title 字段维护，可在 Pages CMS 的「站点外观」板块里改。
+	title: siteAppearance.title,
 
 	// 站点副标题
-	subtitle: "记录，然后忘记",
+	subtitle: siteAppearance.subtitle,
 
 	// 站点 URL
 	site_url: "https://yokan-haze.pages.dev",
@@ -101,19 +103,19 @@ export const siteConfig: SiteConfig = {
 	// 导航栏配置
 	navbar: {
 		// 导航栏Logo
+		// 由 src/data/siteAppearance.json 的 logo 字段维护，可在 Pages CMS 的「站点外观」板块里换图。
 		// 支持三种类型：
 		// 1. Astro图标库: { type: "icon", value: "material-symbols:home-pin-outline" }
 		// 2. 本地图片（public目录，不优化）: { type: "image", value: "/assets/images/logo.webp", alt: "Logo" }
 		// 3. 本地图片（src目录，自动优化但会增加构建时间）: { type: "image", value: "assets/images/logo.webp", alt: "Logo" }
 		// 4. 网络图片: { type: "url", value: "https://example.com/logo.png", alt: "Logo" }
 		// image 和 url 类型可额外设置 valueDark，用于暗色模式下显示另一张图片，不设置则亮暗色共用 value
-		// 例如: { type: "image", value: "assets/images/logo.png", valueDark: "assets/images/logo-dark.png", alt: "Logo" }
 		// 使用 Astro 图标库时不需要设置 valueDark，图标会自动跟随主题亮暗色切换
 		logo: {
-			type: "image",
-			value: "assets/images/logo/firefly-light.png",
-			valueDark: "assets/images/logo/firefly-dark.png",
-			alt: "🍀",
+			type: siteAppearance.logo.type as "icon" | "image" | "url",
+			value: siteAppearance.logo.value,
+			valueDark: siteAppearance.logo.valueDark,
+			alt: siteAppearance.logo.alt,
 		},
 		// 导航栏标题
 		title: "yokan-haze",

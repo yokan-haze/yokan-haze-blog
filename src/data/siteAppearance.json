@@ -1,0 +1,11 @@
+{
+  "avatar": "assets/images/avatar.webp",
+  "logo": {
+    "type": "image",
+    "value": "assets/images/logo/firefly-light.png",
+    "valueDark": "assets/images/logo/firefly-dark.png",
+    "alt": "🍀"
+  },
+  "title": "yokan-haze",
+  "subtitle": "记录，然后忘记"
+}

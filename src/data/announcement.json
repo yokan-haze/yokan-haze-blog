@@ -1,0 +1,11 @@
+{
+  "title": "",
+  "content": "本站刚开张，还在慢慢收拾。",
+  "closable": true,
+  "link": {
+    "enable": true,
+    "text": "了解更多",
+    "url": "/about/",
+    "external": false
+  }
+}

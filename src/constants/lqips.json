@@ -1,5 +1,4 @@
 {
-  "src:assets/images/avatar.avif": "dcd8d5d1cecabea9a9",
   "src:content/posts/images/firefly1.avif": "d4d7e5cdc4d7baaec9",
   "src:assets/images/MobileWallpaper/m6.avif": "ccd0cbdddddbcccac9",
   "src:assets/images/MobileWallpaper/m5.avif": "e1cec9cbb9b7b19a9b",
@@ -16,5 +15,6 @@
   "src:assets/images/DesktopWallpaper/d2.avif": "e8f3e6b0bdb4f5e6de",
   "src:assets/images/DesktopWallpaper/d1.avif": "8b9bb59ba6bae7d7dd",
   "public:assets/images/ad/ad1.webp": "a1b8b68a8e918c8f93",
-  "public:uploads/birds-fly.webp": "4750555860656d7678"
+  "public:uploads/birds-fly.webp": "4750555860656d7678",
+  "src:assets/images/avatar.webp": "edf1f4c5d3e3c8d1e1"
 }

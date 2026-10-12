@@ -33,6 +33,18 @@ media:
     output: /assets/videos
     categories: [video]
     rename: safe
+  - name: site-avatar
+    label: 站点外观 · 头像（建议 1:1 方图，550×550 以内）
+    input: src/assets/images
+    output: assets/images
+    extensions: [webp, avif, png, jpg, jpeg]
+    rename: false
+  - name: site-logo
+    label: 站点外观 · 导航栏 Logo（建议透明底 PNG/WebP，高度 64px 左右）
+    input: src/assets/images/logo
+    output: assets/images/logo
+    extensions: [webp, avif, png, jpg, jpeg]
+    rename: false
 
 content:
   # ─────────── 文章 ───────────
@@ -309,6 +321,100 @@ content:
           multiple:
             max: 10
           unique: true
+
+  # ─────────── 站点外观（头像 / Logo / 标题 / 公告）───────────
+  # 注意：这里的 type: image 字段把值写回 JSON 的**字符串**（例如 "assets/images/avatar.webp"），
+  # 路径风格与 src 目录相对路径一致，Astro 构建时会自动优化。
+  - name: siteAppearance
+    label: 站点外观（头像 / Logo / 站点标题）
+    type: group
+    items:
+      - name: identity
+        label: 头像 · Logo · 标题
+        type: file
+        path: src/data/siteAppearance.json
+        format: json
+        fields:
+          - name: avatar
+            label: 头像（侧边栏个人卡片，建议 1:1 方图）
+            type: image
+            options:
+              media: site-avatar
+          - name: logo
+            label: 导航栏 Logo
+            type: object
+            fields:
+              - name: type
+                label: 类型
+                type: select
+                options:
+                  values:
+                    - name: image
+                      label: 本地图片（推荐）
+                    - name: icon
+                      label: 图标库名称
+                    - name: url
+                      label: 网络图片网址
+                default: image
+                description: 只有「本地图片」能用下面的选图按钮；改成图标名或网址请直接编辑 JSON
+              - name: value
+                label: 亮色模式图片
+                type: image
+                options:
+                  media: site-logo
+                description: 仅当上方「类型」为 image 时使用；若改成 icon/url 请编辑 JSON 直接填图标名或网址
+              - name: valueDark
+                label: 暗色模式图片（留空则亮暗色共用同一张）
+                type: image
+                options:
+                  media: site-logo
+              - name: alt
+                label: 图片替代文字
+                type: string
+                default: 🍀
+          - name: title
+            label: 站点标题（也用于浏览器标签页与 SEO）
+            type: string
+            required: true
+          - name: subtitle
+            label: 站点副标题（首页横幅与个人签名）
+            type: string
+
+      - name: announcement
+        label: 公告栏
+        type: file
+        path: src/data/announcement.json
+        format: json
+        fields:
+          - name: title
+            label: 公告标题
+            type: string
+            description: 留空则使用主题默认标题
+          - name: content
+            label: 公告正文
+            type: text
+          - name: closable
+            label: 允许访客关闭公告
+            type: boolean
+            default: true
+          - name: link
+            label: 公告里的链接按钮
+            type: object
+            fields:
+              - name: enable
+                label: 显示这个链接
+                type: boolean
+                default: true
+              - name: text
+                label: 链接文字
+                type: string
+              - name: url
+                label: 链接地址
+                type: string
+              - name: external
+                label: 在新标签页打开（外部链接）
+                type: boolean
+                default: false
 
   # ─────────── 页面内容 ───────────
   - name: pages
