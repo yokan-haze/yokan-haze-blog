@@ -27,6 +27,12 @@ media:
     output: assets/images/MobileWallpaper
     categories: [image]
     rename: safe
+  - name: bg-videos
+    label: 背景视频（mp4，必须小于 25 MB）
+    input: public/assets/videos
+    output: /assets/videos
+    categories: [video]
+    rename: safe
 
 content:
   # ─────────── 文章 ───────────
@@ -293,6 +299,23 @@ content:
           media: wallpaper-mobile
           multiple:
             max: 30
+          unique: true
+
+  # ─────────── 背景视频 ───────────
+  - name: videos
+    label: 背景视频
+    type: file
+    path: src/data/videos.json
+    format: json
+    fields:
+      - name: list
+        label: 视频列表（可上传多个，按下面的播放模式顺序或随机播放）
+        type: file
+        options:
+          media: bg-videos
+          categories: [video]
+          multiple:
+            max: 10
           unique: true
 
   # ─────────── 页面内容 ───────────
