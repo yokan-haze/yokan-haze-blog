@@ -1,13 +1,19 @@
 // 构建期视频压缩
 // ----------------
-// 在 `astro build` 之后运行。Astro 会把整个 public/ 原样拷进 dist/，背景视频
-// shorekeeper-night.mp4 有 8.8 MB，占了首屏传输的绝大部分，冷缓存 LCP 因此超标。
+// 在 `astro build` 之后运行。Astro 会把整个 public/ 原样拷进 dist/，历史上背景视频
+// 有 8.8 MB，占首屏传输的绝大部分，冷缓存 LCP 因此超标。
 //
 // 本脚本只重编码 **dist/ 里的那份拷贝**，public/assets/videos/ 下的源文件保持不动
 // （源文件是站长的母版，构建脚本不应改写它）。
 //
+// 定位：**「过大视频」的兜底闸门**，不是质量目标。
+//   · 站长已经把背景视频从 4K 原片直接编码到 1080p30 / 1400 kbps（≈2.6 MiB）放进 public/，
+//     这是画质与体积的定点。它在上限内，所以构建期**原样跳过**。
+//   · 做二次有损编码会让损失叠加（发丝与眼睛高光出现块状），上一轮画质回归就是这么来的。
+//   · 这个闸门只为拦住「从 Pages CMS 后台上传了一个几十 MB 的大视频」这种情况。
+//
 // 设计约束（站长要求）：
-//   · 有 ffmpeg → 压到 ≤ TARGET_BYTES；
+//   · 有 ffmpeg → 把**超过 TARGET_BYTES** 的视频压到上限内；已经在上限内的原样跳过。
 //   · 在体积上限内追求最好观感：限帧（见 MAX_FPS）+ 把预算尽量吃满（见 FIRST_PASS_RATIO），
 //     而不是产出一个小文件了事。
 //
@@ -26,8 +32,21 @@ import { resolveSiteRoot } from "./site-root";
 
 // ── 配置 ──────────────────────────────────────────────────────────────
 
-/** 压缩目标上限（字节）。1.45 MB 给 MP4 容器开销和 MB/MiB 口径差留余量，确保 ≤1.5 MB。 */
-const TARGET_BYTES = 1_450_000;
+/**
+ * 体积上限（字节）—— **「过大视频」的兜底闸门，不是质量目标。**
+ *
+ * 语义：`public/assets/videos/` 下的 mp4 **超过**这个体积时，构建期才会重编码一次；
+ * 已经 ≤ 它的文件一律原样跳过（见 main() 里的 `⏭` 日志），**绝不二次压缩**。
+ *
+ * 为什么是 3 MB：站长的背景视频已经**从 4K 原片直接编码**到
+ * 1920x1080 / 30fps / 1400 kbps（≈2.59 MiB）并放进 public/ —— 这是画质与体积的定点，
+ * 构建期不该再碰它。做二次有损编码会让损失叠加（发丝与眼睛高光压出块状），
+ * 上一轮画质回归的根因正是如此。
+ *
+ * 所以：**不要把它理解成「所有视频都要压到 3 MB 以下」**，也不要为了压小它而调低 ——
+ * 那等于把已定稿的源文件再压一遍。它只为拦住「从 Pages CMS 后台上传了过大的视频」。
+ */
+const TARGET_BYTES = 3_000_000;
 
 /**
  * 输出帧率上限。
@@ -576,13 +595,20 @@ async function main(): Promise<void> {
 	const pending: { name: string; bytes: number }[] = [];
 	for (const name of names) {
 		const bytes = await sizeOf(path.join(videosDir, name));
-		if (bytes !== null && bytes > TARGET_BYTES) {
+		if (bytes === null) continue;
+		if (bytes > TARGET_BYTES) {
 			pending.push({ name, bytes });
+			continue;
 		}
+		// 已经在上限内 → 原样跳过，**不做二次编码**。有损编码的损失会叠加，
+		// 把已定稿的源文件再压一遍只会更糊（这正是上一轮画质回归的成因）。
+		console.log(
+			`   ⏭ ${name}：${sizeText(bytes)} 已经 ≤ 上限 ${sizeText(TARGET_BYTES)}，原样跳过、不做二次压缩`,
+		);
 	}
 	if (pending.length === 0) {
 		console.log(
-			`✨ 所有视频都已在 ${sizeText(TARGET_BYTES)} 以内，无需压缩。`,
+			`✨ ${names.length} 个视频全部在上限 ${sizeText(TARGET_BYTES)} 以内，无需压缩。`,
 		);
 		return;
 	}
