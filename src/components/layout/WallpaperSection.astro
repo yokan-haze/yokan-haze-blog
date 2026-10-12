@@ -530,7 +530,12 @@ const wallpaperPosition = state.isFullscreenMode
     )}
     
     {backgroundWallpaper.playerEnable && typeof backgroundWallpaper.src === "object" && !Array.isArray(backgroundWallpaper.src) && backgroundWallpaper.src.playerUrl && (
-        <BackgroundPlayer playerUrl={backgroundWallpaper.src.playerUrl} playerMode={backgroundWallpaper.common?.playerMode ?? "order"} />
+        <BackgroundPlayer
+            playerUrl={backgroundWallpaper.src.playerUrl}
+            playerMode={backgroundWallpaper.common?.playerMode ?? "order"}
+            playerAutoplay={backgroundWallpaper.playerAutoplay ?? false}
+            playerLoop={backgroundWallpaper.playerLoop ?? false}
+        />
     )}
 
     <div id="banner-dim-container" class="absolute inset-0 z-10 pointer-events-none">

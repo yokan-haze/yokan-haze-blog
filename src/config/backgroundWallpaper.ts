@@ -5,6 +5,10 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	mode: "banner",
 	// 是否启用背景视频播放，配置后将在导航栏显示视频播放按钮
 	playerEnable: true,
+	// 进入页面就自动播放，不用点导航栏那个按钮（静音播放，符合浏览器自动播放策略）
+	playerAutoplay: true,
+	// 单个视频播完后循环重播，而不是淡出停下
+	playerLoop: true,
 	/**
 	 * 背景图片配置
 	 * 图片路径支持三种格式：

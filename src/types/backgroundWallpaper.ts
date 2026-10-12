@@ -3,6 +3,8 @@ export type FullscreenWallpaperLayout = "classic" | "hero";
 export type BackgroundWallpaperConfig = {
 	mode: "banner" | "fullscreen" | "overlay" | "none"; // 壁纸模式：banner横幅模式、fullscreen全屏壁纸、overlay全屏透明覆盖模式或none纯色背景
 	playerEnable?: boolean; // 是否启用背景视频播放，默认false
+	playerAutoplay?: boolean; // 进入页面即自动播放背景视频（静音），无需点击导航栏按钮，默认false
+	playerLoop?: boolean; // 单个视频播放结束后是否循环重播，默认false（原行为：播完淡出停止）
 	src:
 		| string
 		| string[]
