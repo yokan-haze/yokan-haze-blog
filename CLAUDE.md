@@ -92,7 +92,21 @@ LQIP data is generated into `src/constants/lqips.json` and committed — regener
 
 ## Deployment
 
-- **Vercel** (default, `vercel.json`)
-- **Cloudflare Workers** (`wrangler.jsonc`, set `CF_WORKERS` env var)
-- Static output to `dist/`
+- **Cloudflare Pages**（实际使用的部署方式）：项目名 `yokan-haze`，由 GitHub Actions 工作流
+  `.github/workflows/cloudflare-pages.yml` 在 push 到 `main` 后自动构建并上传 `dist/`。
+- `vercel.json` 与 `wrangler.jsonc` 是上游主题遗留的配置，**当前未生效**（`CF_WORKERS` 从未设置）。
+- 静态输出到 `dist/`。
+
+## 站点所有者的操作纪律（动手前必读）
+
+本仓库维护着一份来自**真实事故**的操作纪律，写在 `AGENTS.md` 末尾的
+「站点所有者的操作纪律」一节，包含五条带检查方法的规则：
+
+1. 改任何素材之前先查它是不是已经被处理过（避免二次有损编码）
+2. 构建脚本里的体积上限不是质量目标（不要为了压小体积调低它）
+3. 验证要覆盖副作用，不能只验主效果（例如验证循环时同时验证「没有重新加载」）
+4. 多智能体任务契约里 inScope 与 outOfScope 不得互相覆盖
+5. 本机环境注意事项（ffmpeg 路径、PowerShell 重定向二进制、并发构建互毁、GitHub 连通性）
+
+**改这个仓库之前，请先读那一节。** 上面每一条都对应一次已经发生过的线上问题。
 
