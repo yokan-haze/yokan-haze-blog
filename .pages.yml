@@ -15,6 +15,18 @@ media:
     output: /gallery
     categories: [image]
     rename: false
+  - name: wallpaper-desktop
+    label: 电脑端壁纸图片（建议 1920×1080）
+    input: src/assets/images/DesktopWallpaper
+    output: assets/images/DesktopWallpaper
+    categories: [image]
+    rename: safe
+  - name: wallpaper-mobile
+    label: 手机端壁纸图片（建议 1080×1920 竖图）
+    input: src/assets/images/MobileWallpaper
+    output: assets/images/MobileWallpaper
+    categories: [image]
+    rename: safe
 
 content:
   # ─────────── 文章 ───────────
@@ -258,6 +270,30 @@ content:
         label: 显示
         type: boolean
         default: true
+
+  # ─────────── 壁纸 ───────────
+  - name: wallpapers
+    label: 壁纸
+    type: file
+    path: src/data/wallpapers.json
+    format: json
+    fields:
+      - name: desktop
+        label: 电脑端壁纸（1920×1080，可多张，每次刷新随机显示一张）
+        type: image
+        options:
+          media: wallpaper-desktop
+          multiple:
+            max: 30
+          unique: true
+      - name: mobile
+        label: 手机端壁纸（1080×1920 竖图，可多张，每次刷新随机显示一张）
+        type: image
+        options:
+          media: wallpaper-mobile
+          multiple:
+            max: 30
+          unique: true
 
   # ─────────── 页面内容 ───────────
   - name: pages

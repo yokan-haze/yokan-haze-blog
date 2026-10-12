@@ -1,4 +1,13 @@
 import type { BackgroundWallpaperConfig } from "@/types/backgroundWallpaper";
+import wallpapers from "@/data/wallpapers.json";
+
+// 壁纸列表由 src/data/wallpapers.json 维护，可在 Pages CMS 后台上传和增删。
+// Pages CMS 写入的路径可能是 "/assets/..." 形式，这里统一去掉开头的斜杠，
+// 转成 Astro 需要的 src 相对路径（"assets/..."），从而享受图片自动优化。
+const toSrcPath = (list: unknown): string[] =>
+	(Array.isArray(list) ? list : [])
+		.map((p) => String(p).replace(/^\/+/, ""))
+		.filter(Boolean);
 
 export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	// 壁纸模式："banner" 横幅壁纸，"fullscreen" 全屏壁纸，"overlay" 覆盖透明，"none" 纯色背景无壁纸
@@ -9,6 +18,9 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	playerAutoplay: true,
 	// 单个视频播完后循环重播，而不是淡出停下
 	playerLoop: true,
+	// 是否显示导航栏上的播放/暂停按钮。既然已经自动播放了，按钮就多余了，设为 false 隐藏
+	// （隐藏后就不提供手动暂停入口；想恢复随时改回 true）
+	playerButtonVisible: false,
 	/**
 	 * 背景图片配置
 	 * 图片路径支持三种格式：
@@ -42,24 +54,10 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	src: {
 		// 桌面背景图片（支持单张或多张随机）
 		// desktop: "assets/images/DesktopWallpaper/d1.avif",
-		desktop: [
-			"assets/images/DesktopWallpaper/d1.avif",
-			"assets/images/DesktopWallpaper/d2.avif",
-			"assets/images/DesktopWallpaper/d3.avif",
-			"assets/images/DesktopWallpaper/d4.avif",
-			"assets/images/DesktopWallpaper/d5.avif",
-			"assets/images/DesktopWallpaper/d6.avif",
-		],
+		desktop: toSrcPath(wallpapers.desktop),
 		// 移动背景图片（支持单张或多张随机）
 		// mobile: "assets/images/MobileWallpaper/m1.avif",
-		mobile: [
-			"assets/images/MobileWallpaper/m1.avif",
-			"assets/images/MobileWallpaper/m2.avif",
-			"assets/images/MobileWallpaper/m3.avif",
-			"assets/images/MobileWallpaper/m4.avif",
-			"assets/images/MobileWallpaper/m5.avif",
-			"assets/images/MobileWallpaper/m6.avif",
-		],
+		mobile: toSrcPath(wallpapers.mobile),
 		// 背景视频播放地址
 		// 支持单个视频路径（字符串）或多个视频循环（数组，参考上面壁纸配置）
 		// 支持远程视频URL，本地视频请放在 public/assets/videos/ 目录下

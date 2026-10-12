@@ -5,6 +5,7 @@ export type BackgroundWallpaperConfig = {
 	playerEnable?: boolean; // 是否启用背景视频播放，默认false
 	playerAutoplay?: boolean; // 进入页面即自动播放背景视频（静音），无需点击导航栏按钮，默认false
 	playerLoop?: boolean; // 单个视频播放结束后是否循环重播，默认false（原行为：播完淡出停止）
+	playerButtonVisible?: boolean; // 是否在导航栏显示背景视频的播放/暂停按钮，默认true。自动播放时通常不需要它
 	src:
 		| string
 		| string[]
