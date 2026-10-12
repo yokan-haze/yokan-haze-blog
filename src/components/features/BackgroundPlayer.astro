@@ -127,7 +127,14 @@ const tLoadError = i18n(I18nKey.videoLoadError);
 		}
 
 		function doPlay() {
-			video.src = urlList[currentIndex];
+			var wanted = urlList[currentIndex];
+			// 只在真的换片时才给 src 赋值。
+			// 赋同一个值也会让浏览器把视频整个重新加载一遍 —— 加载期间画面空白，
+			// 表现为「每隔一个视频时长就闪一下」（视频越大越明显）。
+			// 暂停后恢复播放、以及循环重播，都会走到这里，所以这一层判断必须留着。
+			if (video.getAttribute("src") !== wanted) {
+				video.src = wanted;
+			}
 			video.muted = true;
 			video.play()
 				.then(function () {
@@ -169,8 +176,11 @@ const tLoadError = i18n(I18nKey.videoLoadError);
 				currentIndex = pickIndex(currentIndex);
 				doPlay();
 			} else if (playerLoop) {
-				// 单个视频 + 开启循环：重播而不是淡出停止
-				doPlay();
+				// 单个视频 + 开启循环：把播放位置归零继续播，不要重新加载。
+				// 正常情况下这里不会触发 —— 单视频循环用的是原生 video.loop（见下方初始化），
+				// 这个分支只是兜底，防止某些浏览器上 loop 未生效时停住。
+				try { video.currentTime = 0; } catch (e) {}
+				video.play().catch(function () { isPlaying = false; syncAttr(); });
 			} else {
 				isPlaying = false;
 				if (overlay) { overlay.classList.remove("opacity-100"); overlay.classList.add("opacity-0"); }
@@ -217,6 +227,14 @@ const tLoadError = i18n(I18nKey.videoLoadError);
 		if (!isMultiple) {
 			if (prevBtn) prevBtn.style.display = "none";
 			if (nextBtn) nextBtn.style.display = "none";
+		}
+
+		// 单视频 + 开启循环：用浏览器原生的 loop 属性做无缝循环。
+		// 这是「壁纸每隔一个视频时长就闪一下」的根治办法 ——
+		// 靠 ended 事件回调重新播放会重设 src、触发整段重新加载，加载期间画面是空的。
+		// 原生 loop 由浏览器内部衔接，不会产生加载间隙。
+		if (playerLoop && !isMultiple) {
+			video.loop = true;
 		}
 
 		// 自动播放：进入页面即开始，无需点击导航栏按钮
