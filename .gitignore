@@ -73,6 +73,11 @@ _demo-backup/
 .github/workflows/build.yml
 .github/workflows/deploy.yml
 
+# 部署工作流在失败时写下的 Issue 正文（本地照跑一遍会留在仓库根目录）
+# 注意：同一步骤还会产生 deploy-attempt-*.log 与 deploy-failure.log，
+# 它们已被上面的 *.log 覆盖，这里不重复列。
+deploy-failure-issue.md
+
 # 本地自动上线脚本（未采用该方案）
 auto-deploy.mjs
 auto-deploy.ps1
