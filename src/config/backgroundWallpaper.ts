@@ -84,7 +84,7 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 设为 false：回到主题原设计——视频一播放就把横幅文字淡出、只留画面。
 		// 站长反馈「首页横幅标题不见了」，正是因为 playerAutoplay 会让视频在进页面时立即播放，
 		// 而原设计会在那一刻把文字淡出。这里按站长要求保留文字。
-		keepTextWhileVideoPlaying: false,
+		keepTextWhileVideoPlaying: true,
 		// 主页横幅文字
 		homeText: {
 			// 是否启用主页横幅文字
