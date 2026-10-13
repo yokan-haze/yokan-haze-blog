@@ -68,13 +68,21 @@ jobs:
           else
             # 取本次推送的改动清单：优先本地 git（checkout 深度够时最准），
             # 深度不够（actions/checkout 默认 depth=1）就退回 GitHub compare API。
+            #
+            # 重命名/复制必须把**旧路径**也算进来（见下）：`git diff --name-only` 与
+            # compare API 的 `.files[].filename` 都只给**目标路径**，旧路径分别在
+            # --name-status 的第二列与 `.previous_filename`。若不算旧路径，
+            # 「把源码文件搬进 src/content/」会被误判成纯内容改动而跳过类型检查。
+            # 保守方向：重命名/复制一律把两个路径都列出 —— 旧路径在内容目录之外时，
+            # 就会走「照常类型检查」分支。
             CHANGED=""
             if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-              CHANGED="$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" 2>/dev/null || true)"
+              CHANGED="$(git diff --name-status -M "$BEFORE_SHA" "$AFTER_SHA" 2>/dev/null \
+                | awk -F'\t' '{ if ($1 ~ /^[RC]/) { print $2; print $3 } else { print $2 } }' || true)"
             fi
             if [ -z "$CHANGED" ]; then
               CHANGED="$(gh api "repos/${REPO}/compare/${BEFORE_SHA}...${AFTER_SHA}" \
-                --jq '.files[] | .filename' 2>/dev/null || true)"
+                --jq '.files[] | .filename, (.previous_filename // empty)' 2>/dev/null || true)"
             fi
             COUNT="$(printf '%s' "$CHANGED" | grep -c . || true)"
 
