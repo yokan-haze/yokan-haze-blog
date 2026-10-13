@@ -16,6 +16,8 @@
 //   · 有 ffmpeg → 把**超过 TARGET_BYTES** 的视频压到上限内；已经在上限内的原样跳过。
 //   · 在体积上限内追求最好观感：限帧（见 MAX_FPS）+ 把预算尽量吃满（见 FIRST_PASS_RATIO），
 //     而不是产出一个小文件了事。
+//   · `--check`：只回答「有没有超限视频」，不编码、不碰 ffmpeg。workflow 用它决定
+//     要不要安装 ffmpeg（没有超限视频就不装，省约 24s）。判断用的是同一个 TARGET_BYTES。
 //
 // 失败策略：**本地宽松、CI 严格**（见 IS_CI 与 reportFailure）
 //   · 本地（没有 CI 环境变量）：ffmpeg 缺失/编码失败 → 只警告、跳过、构建照常通过。
@@ -577,6 +579,74 @@ async function compressFile(
 
 // ── 主流程 ────────────────────────────────────────────────────────────
 
+/**
+ * 是不是「只检查、不压缩」模式（`--check`）。
+ *
+ * workflow 在 `astro build` **之前**跑 `tsx scripts/compress-videos.ts --check`：
+ * 退出码 0 = 没有超限视频（可以不装 ffmpeg）；1 = 有（必须装）；2 = 检查本身出错。
+ */
+const CHECK_ONLY = process.argv.includes("--check");
+
+/**
+ * 只回答一个问题：`public/assets/videos/` 里有没有超过 TARGET_BYTES 的视频？
+ *
+ * **目录口径说明**：normal 模式查的是构建产物 `dist/assets/videos/`（astro 把 public/
+ * 原样拷进 dist/，两边字节数完全相同）；--check 跑在构建之前、dist/ 还不存在，所以查源目录。
+ * 两边用的是**同一个 TARGET_BYTES 常量**、同一种「`> TARGET_BYTES`」判定，因此不会漂移。
+ *
+ * 兜底逻辑仍然在 normal 模式里：就算这里判断失误（漏装 ffmpeg），构建期一旦发现真有
+ * 超限视频而 ffmpeg 不可用，compress-videos.ts 会按 t13 的约定在 CI 上硬失败 ——
+ * 最坏结果是「构建红了」，绝不会变成「静默发一个未压缩的大视频」。
+ *
+ * 退出码：0 = 不需要压缩；1 = 需要压缩；2 = 检查本身出错（调用方应保守地照常安装 ffmpeg）。
+ */
+async function checkVideos(): Promise<void> {
+	const videosDir = path.join("public", "assets", "videos");
+	console.log(
+		`🎬 --check：检查 ${videosDir}/ 里有没有超过 ${sizeText(TARGET_BYTES)} 的视频`,
+	);
+
+	let names: string[];
+	try {
+		names = (await fs.readdir(videosDir)).filter((name) =>
+			name.toLowerCase().endsWith(".mp4"),
+		);
+	} catch {
+		console.log(`   （没有 ${videosDir}/）→ 没有需要压缩的视频。`);
+		return;
+	}
+
+	const oversized: { name: string; bytes: number }[] = [];
+	for (const name of names) {
+		const bytes = await sizeOf(path.join(videosDir, name));
+		if (bytes === null) continue;
+		if (bytes > TARGET_BYTES) {
+			oversized.push({ name, bytes });
+			continue;
+		}
+		console.log(
+			`   ⏭ ${name}：${sizeText(bytes)} 已经 ≤ 上限 ${sizeText(TARGET_BYTES)}，无需压缩`,
+		);
+	}
+
+	if (oversized.length === 0) {
+		console.log(
+			`   ✅ ${names.length} 个视频都在上限内 → 不需要压缩，workflow 可以不安装 ffmpeg。`,
+		);
+		return;
+	}
+
+	for (const { name, bytes } of oversized) {
+		console.warn(
+			`   ⚠ ${name}：${sizeText(bytes)} 超过上限 ${sizeText(TARGET_BYTES)}，需要压缩`,
+		);
+	}
+	console.log(
+		`   结论：${oversized.length} 个视频需要压缩 → workflow 必须安装 ffmpeg（--check 退出码 1）。`,
+	);
+	process.exitCode = 1;
+}
+
 async function main(): Promise<void> {
 	const videosDir = path.join(resolveSiteRoot(), "assets", "videos");
 
@@ -700,17 +770,29 @@ async function main(): Promise<void> {
 // 顶层 await：保证 main() 一定跑完（脚本由 pnpm build 的 && 链驱动）。
 // 本地：任何异常都降级成警告，退出码保持 0。
 // CI  ：连「脚本自己崩了」也必须响亮失败 —— 否则又是「绿构建 + 未压缩视频」。
-try {
-	await main();
-} catch (err) {
-	const detail = err instanceof Error ? err.message : String(err);
-	if (IS_CI) {
-		console.error(`::error::构建期视频压缩脚本异常终止：${detail}`);
-		console.error(
-			"   视频没有按预期压缩，构建已被判失败，部署不会继续。修好后重新推送即可。",
-		);
-		process.exitCode = 1;
-	} else {
-		console.warn(`⚠  视频压缩脚本出错，已跳过（不影响构建）：${detail}`);
+if (CHECK_ONLY) {
+	// --check 模式：只读目录、不碰 ffmpeg、不改任何文件。
+	// 出错时用退出码 2（而不是 1），让调用方能把「需要压缩」与「判断不了」分开处理。
+	try {
+		await checkVideos();
+	} catch (err) {
+		const detail = err instanceof Error ? err.message : String(err);
+		console.error(`::error::--check 检查视频体积时出错：${detail}`);
+		process.exitCode = 2;
+	}
+} else {
+	try {
+		await main();
+	} catch (err) {
+		const detail = err instanceof Error ? err.message : String(err);
+		if (IS_CI) {
+			console.error(`::error::构建期视频压缩脚本异常终止：${detail}`);
+			console.error(
+				"   视频没有按预期压缩，构建已被判失败，部署不会继续。修好后重新推送即可。",
+			);
+			process.exitCode = 1;
+		} else {
+			console.warn(`⚠  视频压缩脚本出错，已跳过（不影响构建）：${detail}`);
+		}
 	}
 }

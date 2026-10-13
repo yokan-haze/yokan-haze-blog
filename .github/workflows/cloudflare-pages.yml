@@ -44,18 +44,96 @@ jobs:
         id: deps
         run: pnpm install --frozen-lockfile
 
+      # 只改内容的提交不必跑类型检查（省约 14s）：发文章 / 换图只动 src/content/** 与
+      # public/**，源码没变就不可能引入类型错误。
+      # **只要出现任何其它路径**（源码、配置、脚本、工作流本身），或者事件不是 push、
+      # 或者拿不到可比较的提交范围，就一律照常检查 —— 宁可慢一点，不能漏检。
+      - name: 判断是否需要跑类型检查
+        id: scope
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
+        run: |
+          RUN_CHECK=true
+          EMPTY_SHA="0000000000000000000000000000000000000000"
+
+          if [ "$EVENT_NAME" != "push" ] \
+             || [ -z "$BEFORE_SHA" ] || [ -z "$AFTER_SHA" ] \
+             || [ "$BEFORE_SHA" = "$EMPTY_SHA" ] || [ "$AFTER_SHA" = "$EMPTY_SHA" ]; then
+            echo "事件是 ${EVENT_NAME}、或没有可比较的提交范围（${BEFORE_SHA}..${AFTER_SHA}）→ 照常类型检查。"
+          else
+            # 取本次推送的改动清单：优先本地 git（checkout 深度够时最准），
+            # 深度不够（actions/checkout 默认 depth=1）就退回 GitHub compare API。
+            CHANGED=""
+            if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              CHANGED="$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" 2>/dev/null || true)"
+            fi
+            if [ -z "$CHANGED" ]; then
+              CHANGED="$(gh api "repos/${REPO}/compare/${BEFORE_SHA}...${AFTER_SHA}" \
+                --jq '.files[] | .filename' 2>/dev/null || true)"
+            fi
+            COUNT="$(printf '%s' "$CHANGED" | grep -c . || true)"
+
+            if [ "$COUNT" -eq 0 ]; then
+              echo "拿不到本次推送的改动清单 → 照常类型检查（宁可慢，不能漏）。"
+            elif [ "$COUNT" -ge 300 ]; then
+              echo "改动文件数达到 compare API 的 300 条上限（${COUNT}）→ 无法确信范围，照常类型检查。"
+            else
+              OUTSIDE="$(printf '%s\n' "$CHANGED" | grep -vE '^(src/content/|public/)' || true)"
+              if [ -z "$OUTSIDE" ]; then
+                RUN_CHECK=false
+                echo "本次 ${COUNT} 个改动文件全部落在 src/content/ 或 public/ 内 → 跳过类型检查（省约 14s）。"
+                printf '%s\n' "$CHANGED"
+              else
+                echo "改动里包含内容目录之外的路径 → 照常类型检查。前 20 个："
+                printf '%s\n' "$OUTSIDE" | head -n 20
+              fi
+            fi
+          fi
+
+          echo "run_check=$RUN_CHECK" >> "$GITHUB_OUTPUT"
+
       # 质量闸门：类型/内容集合检查不过就不部署。
       # 注意：这一步是硬闸门，失败会拦住下面的构建与部署。
+      # 只改内容时会按上面的判断跳过（跳过≠放宽：源码/配置一改就照常跑）。
       - name: 类型检查（astro check）
         id: check
+        if: steps.scope.outputs.run_check == 'true'
         run: pnpm astro check
+
+      # 只有真有超限视频时才装 ffmpeg（省约 24s）。
+      # 判断依据是 scripts/compress-videos.ts 的 --check 模式 —— 它用的是**同一个
+      # TARGET_BYTES 常量**，所以不会出现「这里说不用压、那边却要压」的漂移。
+      # 注意这只是「要不要提前备好 ffmpeg」的优化：真到构建期若发现有超限视频却没有
+      # ffmpeg，compress-videos.ts 仍按 t13 的约定在 CI 上硬失败，不会静默跳过。
+      - name: 判断是否需要压缩视频（决定是否安装 ffmpeg）
+        id: video
+        shell: bash
+        run: |
+          if pnpm exec tsx scripts/compress-videos.ts --check; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "✅ 没有超限视频 → 跳过 ffmpeg 安装（省约 24s）"
+          else
+            code=$?
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            if [ "$code" -eq 1 ]; then
+              echo "⚠ 存在超限视频 → 安装 ffmpeg 并在构建期压缩"
+            else
+              echo "::warning::--check 的退出码是 $code（预期 0 或 1），无法确认是否需要压缩；保守起见照常安装 ffmpeg。"
+            fi
+          fi
 
       # 构建期视频压缩需要 ffmpeg（含 libx264）。
       # ubuntu-24.04 runner 镜像的 apt 预装列表里没有 ffmpeg，所以这里显式安装；
       # libavcodec-extra 保证 libx264 编码器存在。
-      # 缺失时只告警不失败 —— 压缩脚本会自动跳过，站点仍然构建。
+      # 缺失时只告警不失败 —— 压缩脚本会在真有超限视频时硬失败（见 t13 的约定）。
       - name: 确保 ffmpeg 可用（含 libx264 编码器）
         id: ffmpeg
+        if: steps.video.outputs.needed == 'true'
         shell: bash
         run: |
           if ! command -v ffmpeg >/dev/null 2>&1 \
@@ -87,6 +165,12 @@ jobs:
       # **绝不吞掉失败**：3 次都失败时 `exit 1`，GitHub 仍把这次运行标成失败；
       # 写成 `|| true` 会得到「绿构建 + 站点没更新」的静默失败，那正是要修的问题。
       #
+      # **--branch 必须用实际分支名，绝不能写死 main**（2026-10-13 的事故）：
+      # Cloudflare Pages 靠 --branch 区分生产与预览 —— 只有等于项目 production branch
+      # （main）时才更新 https://yokan-haze.pages.dev，其它分支只产生预览部署。
+      # 写死 --branch=main 会让**任何分支上的运行**都把产物推到生产：当时一个临时测试
+      # 分支的树不含站长刚发的两篇文章，一跑就把线上首页覆盖成了旧内容。
+      #
       # 每次尝试的日志落盘到 deploy-attempt-N.log，失败时的关键行汇总到
       # deploy-failure.log，交给下面「失败时留下可见记录」那一步写进 Issue。
       #
@@ -101,11 +185,23 @@ jobs:
           FAILED_LOG="deploy-failure.log"
           : > "$FAILED_LOG"
 
+          # 生产分支是 main；其它分支只做预览部署，绝不会碰生产站点。
+          BRANCH="${GITHUB_REF_NAME:-}"
+          if [ -z "$BRANCH" ]; then
+            echo "::error::拿不到分支名（GITHUB_REF_NAME 为空）。拒绝猜测 —— 猜成 main 就等于把非 main 的产物推上生产。"
+            exit 1
+          fi
+          if [ "$BRANCH" = "main" ]; then
+            echo "🌐 分支 = ${BRANCH} → 生产部署（会更新 https://yokan-haze.pages.dev）"
+          else
+            echo "🧪 分支 = ${BRANCH} → 预览部署（只产生预览域名，不会改变线上站点）"
+          fi
+
           i=1
           while [ "$i" -le "$MAX_ATTEMPTS" ]; do
             LOG="deploy-attempt-${i}.log"
             echo "::group::部署尝试 ${i}/${MAX_ATTEMPTS}"
-            if pnpm exec wrangler pages deploy dist --project-name=yokan-haze --branch=main >"$LOG" 2>&1; then
+            if pnpm exec wrangler pages deploy dist --project-name=yokan-haze --branch="$BRANCH" >"$LOG" 2>&1; then
               cat "$LOG"
               echo "::endgroup::"
               echo "✅ 第 ${i} 次尝试成功（本步骤共尝试 ${i} 次）"
@@ -165,7 +261,9 @@ jobs:
           # 定位失败步骤（上面的关键步骤都标了 id）
           FAILED_STEP=""
           if [ "${{ steps.deps.outcome }}" = "failure" ]; then FAILED_STEP="安装依赖"; fi
+          if [ "${{ steps.scope.outcome }}" = "failure" ]; then FAILED_STEP="判断是否需要跑类型检查"; fi
           if [ "${{ steps.check.outcome }}" = "failure" ]; then FAILED_STEP="类型检查（astro check）"; fi
+          if [ "${{ steps.video.outcome }}" = "failure" ]; then FAILED_STEP="判断是否需要压缩视频（决定是否安装 ffmpeg）"; fi
           if [ "${{ steps.ffmpeg.outcome }}" = "failure" ]; then FAILED_STEP="确保 ffmpeg 可用（含 libx264 编码器）"; fi
           if [ "${{ steps.build.outcome }}" = "failure" ]; then FAILED_STEP="构建站点"; fi
           if [ "${{ steps.deploy.outcome }}" = "failure" ]; then FAILED_STEP="部署到 Cloudflare Pages（失败自动重试）"; fi

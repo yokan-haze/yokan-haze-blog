@@ -18,6 +18,19 @@ export type BackgroundWallpaperConfig = {
 	common?: {
 		dimOpacity?: number; // 横幅文字遮罩暗度，0-1之间，值越大越暗，默认0.15
 		playerMode?: "order" | "random"; // 多视频播放模式："order" 顺序循环（默认），"random" 随机切换
+		/**
+		 * 背景视频播放时是否保留横幅文字（标题 / 副标题 / 文章横幅信息）。
+		 *
+		 * - false（默认）：主题原设计 —— 视频一播放就把横幅文字连同文字遮罩一起淡出，
+		 *   只留视频画面。手动点击播放的年代文字默认可见，所以看不出问题；但开启了
+		 *   playerAutoplay 之后属性在进页面时立即置上，文字会一直不显示。
+		 * - true：视频播放期间保留横幅文字，并保留 #banner-dim-container（文字底衬）
+		 *   以保证可读性。
+		 *
+		 * 只影响「文字 + 文字遮罩」这两层：#banner-images-container（被视频取代的壁纸图片）、
+		 * #header-waves、#wallpaper-gradient 无论取值如何都会照旧淡出。
+		 */
+		keepTextWhileVideoPlaying?: boolean;
 		homeText?: {
 			enable: boolean; // 是否在首页显示自定义文字（全局开关）
 			title?: string; // 主标题

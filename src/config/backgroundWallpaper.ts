@@ -79,6 +79,12 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		dimOpacity: 0.2,
 		// 多视频播放模式："order" 顺序循环，"random" 随机切换（仅当 playerUrl 为数组时生效）
 		playerMode: "random",
+		// 背景视频播放时是否保留横幅文字（标题 / 副标题 / 文章横幅信息）。
+		// 设为 true：视频自动播放的同时文字照常显示，并保留文字底衬（dimOpacity）保证可读性。
+		// 设为 false：回到主题原设计——视频一播放就把横幅文字淡出、只留画面。
+		// 站长反馈「首页横幅标题不见了」，正是因为 playerAutoplay 会让视频在进页面时立即播放，
+		// 而原设计会在那一刻把文字淡出。这里按站长要求保留文字。
+		keepTextWhileVideoPlaying: false,
 		// 主页横幅文字
 		homeText: {
 			// 是否启用主页横幅文字

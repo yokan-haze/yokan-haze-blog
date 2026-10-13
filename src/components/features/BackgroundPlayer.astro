@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import { backgroundWallpaper } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
@@ -16,6 +17,12 @@ const {
 	playerAutoplay = false,
 	playerLoop = false,
 } = Astro.props;
+
+// 背景视频播放时是否保留横幅文字。
+// 从配置直接读取（而不是走 Props）：文字容器 #banner-overlay-container 在
+// WallpaperSection.astro 里，本次修复不改布局文件，所以开关只在样式层生效。
+const keepTextWhilePlaying =
+	backgroundWallpaper.common?.keepTextWhileVideoPlaying ?? false;
 
 const urls = Array.isArray(playerUrl) ? playerUrl : [playerUrl];
 const hasMultiple = urls.length > 1;
@@ -260,6 +267,9 @@ const tLoadError = i18n(I18nKey.videoLoadError);
 </script>
 
 <style>
+	/* 背景视频播放时，淡出被视频取代/属于装饰的图层。
+	   注意：默认情况下这里**就是主题原设计**，逐字节未改——列表包含文字层与文字遮罩，
+	   即「视频一播放就把横幅文字连同遮罩一起淡出」。 */
 	:global([data-bg-video-playing] #banner-images-container),
 	:global([data-bg-video-playing] #banner-dim-container),
 	:global([data-bg-video-playing] #banner-overlay-container),
@@ -269,3 +279,22 @@ const tLoadError = i18n(I18nKey.videoLoadError);
 		transition: opacity 0.5s ease;
 	}
 </style>
+
+{
+	/* 背景视频播放时是否保留横幅文字（common.keepTextWhileVideoPlaying）。
+	   只把文字层 #banner-overlay-container 与文字遮罩 #banner-dim-container 恢复显示；
+	   #banner-images-container / #header-waves / #wallpaper-gradient 仍按上面的规则淡出。
+
+	   ！！实现方式刻意避开 Astro 的样式提取管线：Astro 只在构建期**静态提取** <style>，
+	   所以条件表达式里的普通 <style> 有两个坑 ——
+	     1. 不会对 ${} 求值，会把模板字面量原样漏进产物；
+	     2. 无论条件真假都会被提取进 CSS 包，选项形同虚设。
+	   改用 is:inline + set:html：直接输出 HTML/CSS 文本，不参与提取，
+	   是否输出完全由 keepTextWhilePlaying 决定 —— 关闭时产物与主题原设计一致。 */
+	keepTextWhilePlaying && (
+		<style
+			is:inline
+			set:html="[data-bg-video-playing] #banner-overlay-container,[data-bg-video-playing] #banner-dim-container{opacity:1 !important;transition:opacity 0.5s ease;}"
+		/>
+	)
+}
