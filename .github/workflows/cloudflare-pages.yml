@@ -22,7 +22,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read # 保持最小：只需要读代码
+      issues: write # 仅用于「部署失败时创建/更新 Issue」这一个用途
 
     steps:
       - name: 检出代码
@@ -40,11 +41,13 @@ jobs:
           cache: pnpm
 
       - name: 安装依赖
+        id: deps
         run: pnpm install --frozen-lockfile
 
       # 质量闸门：类型/内容集合检查不过就不部署。
       # 注意：这一步是硬闸门，失败会拦住下面的构建与部署。
       - name: 类型检查（astro check）
+        id: check
         run: pnpm astro check
 
       # 构建期视频压缩需要 ffmpeg（含 libx264）。
@@ -52,6 +55,7 @@ jobs:
       # libavcodec-extra 保证 libx264 编码器存在。
       # 缺失时只告警不失败 —— 压缩脚本会自动跳过，站点仍然构建。
       - name: 确保 ffmpeg 可用（含 libx264 编码器）
+        id: ffmpeg
         shell: bash
         run: |
           if ! command -v ffmpeg >/dev/null 2>&1 \
@@ -70,10 +74,135 @@ jobs:
           fi
 
       - name: 构建站点
+        id: build
         run: pnpm build
 
-      - name: 部署到 Cloudflare Pages
-        run: pnpm exec wrangler pages deploy dist --project-name=yokan-haze --branch=main
+      # 部署到 Cloudflare Pages（失败自动重试）
+      #
+      # 为什么重试：Cloudflare 偶发返回 `Failed to publish your Function. Got error:
+      # Unknown internal error occurred.` —— 实测手工重跑同一次运行就成功，是瞬时错误。
+      # 2026-10 就因为这个瞬时错误让站点停在旧版本整整 15 小时。
+      #
+      # 重试策略：共 3 次尝试，间隔 15s / 45s（指数退避）。
+      # **绝不吞掉失败**：3 次都失败时 `exit 1`，GitHub 仍把这次运行标成失败；
+      # 写成 `|| true` 会得到「绿构建 + 站点没更新」的静默失败，那正是要修的问题。
+      #
+      # 每次尝试的日志落盘到 deploy-attempt-N.log，失败时的关键行汇总到
+      # deploy-failure.log，交给下面「失败时留下可见记录」那一步写进 Issue。
+      #
+      # 这段刻意只用 POSIX sh 写法（不用数组 / PIPESTATUS / tee），这样它在本机的 sh
+      # 下也能原样跑一遍，不必等推上去才知道控制流对不对。
+      - name: 部署到 Cloudflare Pages（失败自动重试）
+        id: deploy
+        shell: bash
+        run: |
+          MAX_ATTEMPTS=3   # 1 次首发 + 2 次重试
+          DELAY=15         # 首次重试前等 15s，之后 ×3（15s -> 45s）
+          FAILED_LOG="deploy-failure.log"
+          : > "$FAILED_LOG"
+
+          i=1
+          while [ "$i" -le "$MAX_ATTEMPTS" ]; do
+            LOG="deploy-attempt-${i}.log"
+            echo "::group::部署尝试 ${i}/${MAX_ATTEMPTS}"
+            if pnpm exec wrangler pages deploy dist --project-name=yokan-haze --branch=main >"$LOG" 2>&1; then
+              cat "$LOG"
+              echo "::endgroup::"
+              echo "✅ 第 ${i} 次尝试成功（本步骤共尝试 ${i} 次）"
+              exit 0
+            fi
+            cat "$LOG"
+            echo "::endgroup::"
+
+            # 把这次失败的关键行汇总下来（下面的 Issue 步骤读这个文件）
+            {
+              echo "----- 第 ${i}/${MAX_ATTEMPTS} 次尝试失败 -----"
+              grep -E '✘|ERROR|Error|error|Failed|failed|Unknown internal error' "$LOG" | tail -n 12 || true
+              echo "（该次日志的最后 4 行）"
+              tail -n 4 "$LOG" || true
+            } >> "$FAILED_LOG"
+
+            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+              echo "::warning::第 ${i} 次部署失败，${DELAY}s 后重试（共 ${MAX_ATTEMPTS} 次尝试）"
+              sleep "$DELAY"
+              DELAY=$((DELAY * 3))
+            fi
+            i=$((i + 1))
+          done
+
+          echo "::error::Cloudflare Pages 部署连续 ${MAX_ATTEMPTS} 次失败，放弃；站点仍停留在上一版。"
+          exit 1
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 1fae28eb2e756180542c9542e20b6957
+
+      # 失败必须让人看得见：Actions 的红色叉站长不会主动去看，所以失败时自动开一条 Issue。
+      # 标题固定不变 -> 重复失败会合并到同一条（追加评论），不会刷屏。
+      - name: 失败时留下可见记录（创建/更新 Issue）
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          TITLE="⚠️ 部署失败"
+
+          # 定位失败步骤（上面的关键步骤都标了 id）
+          FAILED_STEP=""
+          if [ "${{ steps.deps.outcome }}" = "failure" ]; then FAILED_STEP="安装依赖"; fi
+          if [ "${{ steps.check.outcome }}" = "failure" ]; then FAILED_STEP="类型检查（astro check）"; fi
+          if [ "${{ steps.ffmpeg.outcome }}" = "failure" ]; then FAILED_STEP="确保 ffmpeg 可用（含 libx264 编码器）"; fi
+          if [ "${{ steps.build.outcome }}" = "failure" ]; then FAILED_STEP="构建站点"; fi
+          if [ "${{ steps.deploy.outcome }}" = "failure" ]; then FAILED_STEP="部署到 Cloudflare Pages（失败自动重试）"; fi
+          if [ -z "$FAILED_STEP" ]; then FAILED_STEP="（未能从步骤状态定位，见运行日志）"; fi
+
+          # 提交信息从仓库里读（git log），**不要**用 github.event.head_commit.message 之类的
+          # 表达式插值：提交信息是不可信输入，GitHub 会把表达式插值到脚本正文里
+          # （连注释行也照插），带换行的提交信息足以注入命令。
+          COMMIT="$(git log -1 --format='%h %s' 2>/dev/null || echo '未知（检出可能未完成）')"
+          COMMIT="$(printf '%s' "$COMMIT" | sed 's/|/\\|/g')"   # 竖线会破坏下面的 Markdown 表格
+          NOW="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          if [ -f deploy-failure.log ]; then
+            ERRORS="$(cat deploy-failure.log)"
+          else
+            ERRORS="（没有捕获到部署日志：失败发生在部署步骤之前，或检出未完成）"
+          fi
+
+          BODY_FILE="deploy-failure-issue.md"
+          {
+            echo "## ⚠️ 部署失败"
+            echo
+            echo "| 项目 | 内容 |"
+            echo "|---|---|"
+            echo "| 提交 | \`${COMMIT}\` |"
+            echo "| 失败步骤 | ${FAILED_STEP} |"
+            echo "| 运行 | ${RUN_URL} |"
+            echo "| 触发 | ${EVENT_NAME} / ${REF_NAME} |"
+            echo "| 时间 | ${NOW} |"
+            echo
+            echo "### 从日志里提取的关键错误行"
+            echo
+            echo '```'
+            echo "$ERRORS"
+            echo '```'
+            echo
+            echo "---"
+            echo "_本 Issue 由 \`.github/workflows/cloudflare-pages.yml\` 在运行时失败后自动创建/更新；标题固定，重复失败只会在同一条下面追加评论。_"
+          } > "$BODY_FILE"
+          echo "----- 将要写入 Issue 的正文 -----"
+          cat "$BODY_FILE"
+
+          # 标题固定 -> 找到已打开的同名 Issue 就追加评论，而不是再开一条
+          EXISTING="$(gh issue list --repo "$REPO" --state open \
+            --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$EXISTING" ]; then
+            echo "已有同类 Issue #${EXISTING}，追加评论"
+            gh issue comment "$EXISTING" --repo "$REPO" --body-file "$BODY_FILE"
+          else
+            echo "没有同类 Issue，新建一条"
+            gh issue create --repo "$REPO" --title "$TITLE" --body-file "$BODY_FILE"
+          fi

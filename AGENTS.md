@@ -60,20 +60,46 @@ Do not commit secrets, tokens, or service keys in config files. Keep deployment-
   在一段**长于内容周期**的窗口里各发生多少次。主效果为真 **且** 副作用计数为 0 才算通过。
 - 同理：`video` 的循环应当交给原生 `loop` 属性，不要靠事件回调重新播放。
 
-### 4. 多智能体任务契约：inScope 与 outOfScope 不得互相覆盖
+### 4. 多智能体任务契约必须三向自洽
 
-- **事故**：一个任务的 `inScope` 写了 `src/config/sponsorConfig.ts`，而 `outOfScope` 里有一个
-  通配的 `src/` —— 后者把前者盖住，改动无法登记，任务被判 failed（实现本身正确且已上线）。
+任务书里有三组内容必须互相比对，**任一组合矛盾都会让实现者做不下去**。已真实发生过两次，形式不同：
+
+**（a）inScope 与 outOfScope 不得互相覆盖**
+- **事故**：某任务的 `inScope` 写了 `src/config/sponsorConfig.ts`，而 `outOfScope` 里有一个
+  通配的 `src/` —— 后者把前者盖住，改动无法登记为 changedPaths，任务被判 failed
+  （而实现本身是正确的、也已经上线）。
 - **检查**：把 `inScope` 的每一条与 `outOfScope` 的每一条做前缀比对。
   **任何 outOfScope 条目若是某条 inScope 的父路径，即为矛盾，必须改成精确路径。**
+
+**（b）验收标准与约束不得互相矛盾**
+- **事故**：某任务的验收要求「把部署命令改坏、跑一次真实工作流，确认重试与 Issue 创建」，
+  而同一任务的约束写着「不要自己 push、不要运行部署命令」—— 而该工作流**只能由 push 触发**。
+  实现者无法执行这两条验收，只能如实报 failed（实现已完成、质量良好）。
+- **检查**：逐条问「这条验收，在我自己写的约束下**真的执行得了吗**」。
+  凡涉及 push、部署、真实 CI 运行、访问外部账号的验收，必须在任务书里**显式写明授权范围**
+  （例如「允许推送到临时分支，严禁推 main」），否则就是把不可能完成的要求交给实现者。
+
+**（c）验收标准不得要求改动 inScope 之外的文件**
+- 若某条验收需要通过修改某个在 `inScope` 之外的文件来验证，同样是矛盾。
+
+**通用做法**：写完之后把 inScope、outOfScope、验收清单、约束四块**放在一起读一遍**，
+模拟实现者的执行路径。只要有一条走不通，就是契约错误 —— 改契约，不要指望实现者绕过去。
 
 ### 5. 本机环境注意事项
 
 - **没有 ffmpeg 在 PATH 上**；需要时用绝对路径调用（本会话工作区内有装好的 win32-x64 版本）。
 - 受限沙箱会禁止 ffmpeg 在会话工作区之外创建文件；压缩脚本已内置「改走 stdout、由 Node 落盘」的兜底。
-- **PowerShell 的 `>` 重定向会把二进制转成 UTF-16 文本**（文件体积会翻倍）。取回二进制文件请用
-  `git checkout <commit> -- <path>`，不要用 `git show ... > file`。
+- **不要用 PowerShell 的字符串管线去修改本仓库的文件。** 已发生两次真实损坏：
+  - `git show <ref>:<path> > file` 会把**二进制**转成 UTF-16 文本，体积翻倍、文件损坏。
+    取回二进制请用 `git checkout <ref> -- <path>`。
+  - `Get-Content -Raw` + `WriteAllText` 处理**含中文的 UTF-8 文件**时，会被按 GBK 解码再按 UTF-8 写回 ——
+    实际发生过：一个 9607 字节的工作流文件被写成 11228 字节，且 `on:` 块被改坏，导致该分支任意 push
+    都触发工作流、`workflow_dispatch` 报 422。
+  改仓库文件请用能逐字节保真的方式（编辑器、`edit` 类工具、或 node 的 `fs.readFileSync/writeFileSync`）。
 - 同一个工作区里**并发执行 `pnpm build` 会互相清空 `dist/`**（Astro 构建开始时会清空输出目录），
   导致 `Pagefind was not able to build an index` 之类的假故障。同一次验证只允许一个人构建。
 - `github.com` 与 `api.github.com` 的连通性时好时坏。`git push` 失败时改用 GitHub API 提交并重试，
   不要判定为不可恢复。
+- **本地 `main` 与 `origin/main` 会分叉**：走 GitHub API 提交时，远端会产生与本地**不同哈希**的提交，
+  于是 `git push` 被拒（非快进）。此时要么用 API 脚本继续推（基准要传**本地**的对应提交哈希，
+  不是远端的），要么在网络恢复时做一次 `git fetch && git reset --hard origin/main` 对齐。
