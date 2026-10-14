@@ -1,7 +1,27 @@
-import siteAppearance from "@/data/siteAppearance.json";
+import siteAppearanceRaw from "@/data/siteAppearance.json";
 import type { SiteConfig } from "@/types/siteConfig";
 import { resolvePageToggles } from "../utils/page-toggle-utils";
 import { resolveSiteLang } from "../utils/site-config-utils";
+
+// ⚠️ 防御性读取，不要直接写 siteAppearanceRaw.title 之类的链式访问。
+// 原因：Pages CMS 保存时会**丢掉空值字段**。任何一项被清空（例如副标题留空、
+// 或暗色模式 Logo 没设置），对应的键就会从 JSON 里消失，TypeScript 从 JSON 推断的
+// 类型随之改变，链式访问直接报 ts(2339) —— 而这是**构建期错误**，会触发类型检查
+// 闸门拦住整个部署（2026-10-14 因公告标题被清空真实发生过，见 Issue #9）。
+// 所以统一放宽成「所有字段可选」，再逐个给默认值。
+type SiteAppearanceJson = {
+	avatar?: string;
+	title?: string;
+	subtitle?: string;
+	logo?: {
+		type?: string;
+		value?: string;
+		valueDark?: string;
+		alt?: string;
+	};
+};
+
+const siteAppearance = siteAppearanceRaw as SiteAppearanceJson;
 
 // 定义站点语言
 // 语言代码，例如：'zh_CN', 'zh_TW', 'en', 'ja', 'ru', 'ko'。
@@ -44,10 +64,10 @@ const pages = resolvePageToggles({
 export const siteConfig: SiteConfig = {
 	// 站点标题
 	// 由 src/data/siteAppearance.json 的 title 字段维护，可在 Pages CMS 的「站点外观」板块里改。
-	title: siteAppearance.title,
+	title: siteAppearance.title ?? "yokan-haze",
 
 	// 站点副标题
-	subtitle: siteAppearance.subtitle,
+	subtitle: siteAppearance.subtitle ?? "",
 
 	// 站点 URL
 	site_url: "https://yokan-haze.pages.dev",
@@ -112,10 +132,10 @@ export const siteConfig: SiteConfig = {
 		// image 和 url 类型可额外设置 valueDark，用于暗色模式下显示另一张图片，不设置则亮暗色共用 value
 		// 使用 Astro 图标库时不需要设置 valueDark，图标会自动跟随主题亮暗色切换
 		logo: {
-			type: siteAppearance.logo.type as "icon" | "image" | "url",
-			value: siteAppearance.logo.value,
-			valueDark: siteAppearance.logo.valueDark,
-			alt: siteAppearance.logo.alt,
+			type: (siteAppearance.logo?.type ?? "image") as "icon" | "image" | "url",
+			value: siteAppearance.logo?.value ?? "",
+			valueDark: siteAppearance.logo?.valueDark,
+			alt: siteAppearance.logo?.alt ?? "",
 		},
 		// 导航栏标题
 		title: "yokan-haze",

@@ -1,5 +1,16 @@
 import type { BackgroundWallpaperConfig } from "@/types/backgroundWallpaper";
-import wallpapers from "@/data/wallpapers.json";
+import wallpapersRaw from "@/data/wallpapers.json";
+
+// ⚠️ 防御性读取：Pages CMS 保存时会丢掉空值字段（例如把所有背景视频都删掉时，
+// videos 这个键会从 JSON 里消失）。键一旦消失，TypeScript 从 JSON 推断的类型就变了，
+// 直接 wallpapers.videos 会报 ts(2339) —— 构建期错误，会被类型检查闸门拦住部署。
+// 详见 src/config/siteConfig.ts 顶部关于这次事故的说明（Issue #9）。
+// 下面两个转换函数本来就接受 unknown 并对非数组做兜底，所以这里只需放宽类型。
+const wallpapers = wallpapersRaw as {
+	desktop?: unknown;
+	mobile?: unknown;
+	videos?: unknown;
+};
 
 // 壁纸列表由 src/data/wallpapers.json 维护，可在 Pages CMS 后台上传和增删。
 // Pages CMS 写入的路径可能是 "/assets/..." 形式，这里统一去掉开头的斜杠，

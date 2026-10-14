@@ -1,5 +1,10 @@
-import siteAppearance from "@/data/siteAppearance.json";
+import siteAppearanceRaw from "@/data/siteAppearance.json";
 import type { ProfileConfig } from "../types/profileConfig";
+
+// ⚠️ 防御性读取：Pages CMS 保存时会丢掉空值字段，键消失会让 TypeScript 从 JSON
+// 推断出的类型改变，直接链式访问会报 ts(2339)，进而被类型检查闸门拦住部署。
+// 详见 src/config/siteConfig.ts 顶部关于这次事故的说明（Issue #9）。
+const siteAppearance = siteAppearanceRaw as { avatar?: string };
 
 export const profileConfig: ProfileConfig = {
 	// 头像
@@ -8,7 +13,7 @@ export const profileConfig: ProfileConfig = {
 	// 1. public 目录（以 "/" 开头，不优化）："/assets/images/avatar.webp"
 	// 2. src 目录（不以 "/" 开头，自动优化但会增加构建时间，推荐）："assets/images/avatar.webp"
 	// 3. 远程 URL："https://example.com/avatar.jpg"
-	avatar: siteAppearance.avatar,
+	avatar: siteAppearance.avatar ?? "",
 
 	// 名字
 	name: "零",
