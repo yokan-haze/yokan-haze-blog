@@ -7,9 +7,10 @@ import { url } from "@/utils/url-utils";
 // 由 ffmpeg 转成 WebP，见 public/assets/images/404-shorekeeper.webp
 const illustration = "/assets/images/404-shorekeeper.webp";
 
-// 文案。呼应站点签名「记录，然后忘记」—— 走错的这一页，正好是被忘记的那一页。
-const pageTitle = "这一页，已经被忘记了";
-const pageDesc = "也许是我把它删掉了，也许是你走错了路。";
+// 文案。用的是「海」的意象 —— 呼应整站的守岸人主题：
+// 走错的这一页，就像退潮后什么都没留下的那片海。
+const pageTitle = "这片海上没有你要找的东西";
+const pageDesc = "也许是走错了，也许是我把它弄丢了。";
 ---
 
 <MainGridLayout title="404 · 页面未找到" description={pageDesc}>
@@ -63,6 +64,13 @@ const pageDesc = "也许是我把它删掉了，也许是你走错了路。";
                     >
                         <Icon name="material-symbols:library-books" class="text-xl" />
                         看看写过什么
+                    </a>
+                    <a
+                        href={url("/gallery/")}
+                        class="btn-404-ghost inline-flex items-center gap-2 px-6 py-3 rounded-(--radius-large) text-90 transition-colors duration-200 font-medium"
+                    >
+                        <Icon name="material-symbols:photo-library" class="text-xl" />
+                        随便逛逛
                     </a>
                 </div>
             </div>
