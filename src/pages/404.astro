@@ -1,60 +1,80 @@
 ---
 import { Icon } from "astro-icon/components";
-import I18nKey from "@/i18n/i18nKey";
-import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import { url } from "@/utils/url-utils";
+
+// 404 的配图：从背景视频里抽的一帧（守岸人，第 8 秒），
+// 由 ffmpeg 转成 WebP，见 public/assets/images/404-shorekeeper.webp
+const illustration = "/assets/images/404-shorekeeper.webp";
+
+// 文案。呼应站点签名「记录，然后忘记」—— 走错的这一页，正好是被忘记的那一页。
+const pageTitle = "这一页，已经被忘记了";
+const pageDesc = "也许是我把它删掉了，也许是你走错了路。";
 ---
 
-<MainGridLayout title={i18n(I18nKey.notFound)} description={i18n(I18nKey.notFoundDescription)}>
-    <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-96">
-        <div class="card-base z-10 px-9 py-12 relative w-full flex flex-col items-center justify-center text-center">
-            <!-- 404 大号数字 -->
-            <div class="text-8xl md:text-9xl font-bold text-(--primary) opacity-20 mb-4">
-                {i18n(I18nKey.notFound)}
+<MainGridLayout title="404 · 页面未找到" description={pageDesc}>
+    <div class="flex w-full rounded-(--radius-large) overflow-hidden relative">
+        <div class="card-base z-10 relative w-full overflow-hidden">
+            <!-- 配图 -->
+            <div class="relative w-full overflow-hidden aspect-video max-h-[46vh]">
+                <img
+                    src={illustration}
+                    alt=""
+                    class="w-full h-full object-cover object-center"
+                    loading="eager"
+                    decoding="async"
+                />
+                <!-- 底部压暗一点，让下面的文字过渡自然 -->
+                <div
+                    class="absolute inset-0 pointer-events-none"
+                    style="background:linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(0,0,0,0.28) 100%)"
+                >
+                </div>
+                <!-- 角落的 404 -->
+                <div
+                    class="absolute top-3 left-6 text-5xl md:text-6xl font-bold text-white/85 select-none pointer-events-none"
+                    style="text-shadow:0 2px 10px rgba(0,0,0,0.5)"
+                >
+                    404
+                </div>
             </div>
-            
-            <!-- 404 图标 -->
-            <div class="mb-6">
-                <Icon name="material-symbols:error-outline" class="text-6xl text-(--primary)" />
-            </div>
-            
-            <!-- 标题 -->
-            <div class="text-3xl md:text-4xl font-bold mb-4 text-90">
-                {i18n(I18nKey.notFoundTitle)}
-            </div>
-            
-            <!-- 描述 -->
-            <p class="text-lg text-75 mb-8 max-w-md">
-                {i18n(I18nKey.notFoundDescription)}
-            </p>
-            
-            <!-- 返回首页按钮 -->
-            <a 
-                href={url("/")}
-                class="inline-flex items-center gap-2 px-6 py-3 bg-(--primary) text-white rounded-(--radius-large) hover:bg-(--btn-content) transition-colors duration-200 font-medium"
-            >
-                <Icon name="material-symbols:home" class="text-xl" />
-                {i18n(I18nKey.backToHome)}
-            </a>
-            
-            <!-- 装饰性元素 -->
-            <div class="absolute top-4 left-4 opacity-10">
-                <Icon name="material-symbols:sentiment-sad" class="text-4xl text-(--primary)" />
-            </div>
-            <div class="absolute bottom-4 right-4 opacity-10">
-                <Icon name="material-symbols:search-off" class="text-4xl text-(--primary)" />
+
+            <!-- 文案与去处 -->
+            <div class="px-8 pt-9 pb-12 flex flex-col items-center text-center">
+                <div class="text-3xl md:text-4xl font-bold mb-4 text-90">
+                    {pageTitle}
+                </div>
+
+                <p class="text-lg text-75 mb-9 max-w-md">
+                    {pageDesc}
+                </p>
+
+                <div class="flex flex-wrap items-center justify-center gap-3">
+                    <a
+                        href={url("/")}
+                        class="btn-404-primary inline-flex items-center gap-2 px-6 py-3 bg-(--primary) text-white rounded-(--radius-large) hover:bg-(--btn-content) transition-colors duration-200 font-medium"
+                    >
+                        <Icon name="material-symbols:home" class="text-xl" />
+                        回到首页
+                    </a>
+                    <a
+                        href={url("/archive/")}
+                        class="btn-404-ghost inline-flex items-center gap-2 px-6 py-3 rounded-(--radius-large) text-90 transition-colors duration-200 font-medium"
+                    >
+                        <Icon name="material-symbols:library-books" class="text-xl" />
+                        看看写过什么
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 </MainGridLayout>
 
 <style>
-    /* 添加一些动画效果 */
     .card-base {
         animation: fadeInUp 0.6s ease-out;
     }
-    
+
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -65,10 +85,39 @@ import { url } from "@/utils/url-utils";
             transform: translateY(0);
         }
     }
-    
-    /* 按钮悬停效果 */
-    a:hover {
+
+    /* 次要按钮：用中性边框，避免和主按钮抢注意力 */
+    .btn-404-ghost {
+        border: 1px solid rgba(128, 128, 128, 0.35);
+    }
+
+    .btn-404-ghost:hover {
+        background: rgba(128, 128, 128, 0.1);
+    }
+
+    /* 悬停时轻轻抬起。只作用于这一页自己的两个按钮，不影响站内其他链接 */
+    .btn-404-primary,
+    .btn-404-ghost {
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease,
+            background-color 0.2s ease,
+            border-color 0.2s ease;
+    }
+
+    .btn-404-primary:hover,
+    .btn-404-ghost:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .card-base {
+            animation: none;
+        }
+
+        .btn-404-primary:hover,
+        .btn-404-ghost:hover {
+            transform: none;
+        }
     }
 </style>
