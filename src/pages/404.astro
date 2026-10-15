@@ -7,10 +7,21 @@ import { url } from "@/utils/url-utils";
 // 由 ffmpeg 转成 WebP，见 public/assets/images/404-shorekeeper.webp
 const illustration = "/assets/images/404-shorekeeper.webp";
 
-// 文案。用的是「海」的意象 —— 呼应整站的守岸人主题：
-// 走错的这一页，就像退潮后什么都没留下的那片海。
-const pageTitle = "这片海上没有你要找的东西";
-const pageDesc = "也许是走错了，也许是我把它弄丢了。";
+// ══════════════════════════════════════════════════════════════
+// 404 的文案与去处。想换一种说法，只改这一块就够了。
+//
+// 这一版让守岸人自己开口 —— 不是「页面不存在」的报错口吻，
+// 而是她守在这里、发现你要找的东西不在了。
+// ══════════════════════════════════════════════════════════════
+const pageTitle = "我守在这里，但这一页不在";
+const pageDesc = "潮水把它带走了。也可能，它从来没来过。";
+
+// 三个去处。第一个是主按钮（实心），后两个是次要按钮（描边）
+const actions = [
+    { href: "/", icon: "material-symbols:waves", label: "回到岸上" },
+    { href: "/archive/", icon: "material-symbols:library-books", label: "看看写过什么" },
+    { href: "/gallery/", icon: "material-symbols:photo-library", label: "随便逛逛" },
+];
 ---
 
 <MainGridLayout title="404 · 页面未找到" description={pageDesc}>
@@ -51,27 +62,21 @@ const pageDesc = "也许是走错了，也许是我把它弄丢了。";
                 </p>
 
                 <div class="flex flex-wrap items-center justify-center gap-3">
-                    <a
-                        href={url("/")}
-                        class="btn-404-primary inline-flex items-center gap-2 px-6 py-3 bg-(--primary) text-white rounded-(--radius-large) hover:bg-(--btn-content) transition-colors duration-200 font-medium"
-                    >
-                        <Icon name="material-symbols:home" class="text-xl" />
-                        回到首页
-                    </a>
-                    <a
-                        href={url("/archive/")}
-                        class="btn-404-ghost inline-flex items-center gap-2 px-6 py-3 rounded-(--radius-large) text-90 transition-colors duration-200 font-medium"
-                    >
-                        <Icon name="material-symbols:library-books" class="text-xl" />
-                        看看写过什么
-                    </a>
-                    <a
-                        href={url("/gallery/")}
-                        class="btn-404-ghost inline-flex items-center gap-2 px-6 py-3 rounded-(--radius-large) text-90 transition-colors duration-200 font-medium"
-                    >
-                        <Icon name="material-symbols:photo-library" class="text-xl" />
-                        随便逛逛
-                    </a>
+                    {
+                        actions.map((a, i) => (
+                            <a
+                                href={url(a.href)}
+                                class={`inline-flex items-center gap-2 px-6 py-3 rounded-(--radius-large) transition-colors duration-200 font-medium ${
+                                    i === 0
+                                        ? "btn-404-primary bg-(--primary) text-white hover:bg-(--btn-content)"
+                                        : "btn-404-ghost text-90"
+                                }`}
+                            >
+                                <Icon name={a.icon} class="text-xl" />
+                                {a.label}
+                            </a>
+                        ))
+                    }
                 </div>
             </div>
         </div>
