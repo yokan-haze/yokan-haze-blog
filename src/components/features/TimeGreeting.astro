@@ -1,0 +1,106 @@
+---
+import greetings from "@/data/greetings.json";
+
+// 首页横幅副标题的「问候语」：按访客的本地时间挑一句，替他填进打字机。
+//
+// 为什么要放在浏览器里算：这是静态站，页面在构建时就定型了。
+// 如果按构建时间算，问候语会永远停在构建那一刻 —— 早上打开也显示「已经很晚了哦」。
+// 所以判断必须由访客的浏览器做。
+//
+// 为什么用 is:inline：内联脚本在解析到它时立即执行，**早于所有 defer 模块** ——
+// 而主题的打字机（TypewriterText）是 defer 模块，它在初始化时读取 .typewriter 元素的
+// data-text 属性。我们赶在它之前把 data-text 改成选中的那一句，打字机就会照常
+// 把这句话一个字一个字打出来 —— 视觉与主题原本完全一致，没有任何额外动效。
+// （若之后仍有二次初始化，见下方对 220ms 那次重初始化的处理。）
+
+interface GreetingData {
+	fallback?: string;
+	birthday?: string;
+	time?: { from: number; to: number; text: string }[];
+	weekday?: Record<string, string>;
+	dates?: Record<string, string>;
+	lunar?: Record<string, string>;
+}
+
+const data = greetings as GreetingData;
+---
+
+<script is:inline define:vars={{ GREETINGS: data }}>
+	(function () {
+		if (window.__timeGreetingInit) return;
+		window.__timeGreetingInit = true;
+
+		var d = GREETINGS || {};
+
+		function pad(n) {
+			return (n < 10 ? "0" : "") + n;
+		}
+
+		// 按优先级挑一句；都没命中就返回 null（此时保留主题原本的副标题轮播）
+		function pick(now) {
+			var mmdd = pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+			var ymd = now.getFullYear() + "-" + mmdd;
+
+			// 1) 生日
+			if (d.birthday && d.birthday === mmdd) {
+				return "生日快乐。今天你是主角。";
+			}
+			// 2) 农历节日（需要年份，逐年查表）
+			if (d.lunar && d.lunar[ymd]) return d.lunar[ymd];
+			// 3) 公历固定节日
+			if (d.dates && d.dates[mmdd]) return d.dates[mmdd];
+			// 4) 周末
+			var wd = String(now.getDay());
+			if (d.weekday && d.weekday[wd]) return d.weekday[wd];
+			// 5) 时段
+			var h = now.getHours();
+			if (d.time) {
+				for (var i = 0; i < d.time.length; i++) {
+					var slot = d.time[i];
+					// from > to 表示跨零点（例如 22 -> 3）
+					var hit =
+						slot.from <= slot.to
+							? h >= slot.from && h < slot.to
+							: h >= slot.from || h < slot.to;
+					if (hit) return slot.text;
+				}
+			}
+			return null;
+		}
+
+		function apply() {
+			var box = document.getElementById("banner-subtitle");
+			if (!box) return;
+
+			var line = pick(new Date());
+			if (!line) return; // 没有命中：交给主题原本的副标题轮播
+
+			var tw = box.querySelector(".typewriter");
+			if (tw) {
+				// 喂给打字机：写成只含这一句的 JSON 数组
+				tw.setAttribute("data-text", JSON.stringify([line]));
+				// 主题会在初始化后 220ms 再初始化一次（兼容 banner 显隐晚于内容替换），
+				// 那一次就会读到我们改过的 data-text。
+			} else {
+				// 没开打字机时，主题用的是纯文本副标题
+				box.textContent = line;
+			}
+		}
+
+		// 首次：内联脚本执行时 #banner-subtitle 已在文档中，且早于打字机模块
+		apply();
+
+		// 二次保险：主题的打字机在 220ms 后会重初始化一次，那时再对齐一次
+		setTimeout(apply, 260);
+
+		// Swup 切页回来时 DOM 被替换，需要重新填一次
+		["swup:contentReplaced", "swup:content:replace", "swup:page:view", "astro:page-load"].forEach(
+			function (evt) {
+				document.addEventListener(evt, function () {
+					apply();
+					setTimeout(apply, 260);
+				});
+			},
+		);
+	})();
+</script>

@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import TimeGreeting from "@/components/features/TimeGreeting.astro";
 import TypewriterText from "@/components/features/TypewriterText.astro";
 import { backgroundWallpaper } from "@/config";
 import { encodeMailto, MAILTO_ONCLICK_SCRIPT } from "@/utils/email-utils";
@@ -37,6 +38,10 @@ const homeTextLinksEnable = homeText?.linksEnable !== false;
                         )}
                     </div>
                 )}
+                {/* 问候语：按访客本地时间挑一句，赶在打字机模块初始化之前喂给它。
+                    必须紧跟在 #banner-subtitle 之后 —— TimeGreeting 用的是内联脚本，
+                    解析到这里就立即执行，此时上面的元素已存在，而打字机模块（defer）还没跑。 */}
+                {homeText.subtitle && <TimeGreeting />}
                 {/* 横幅标题下方的链接图标（subtitle 的兄弟节点，避免被打字机/随机副标题的 textContent 覆盖清掉） */}
                 {homeTextLinksEnable && homeTextLinks && homeTextLinks.length > 0 && (
                     <div class="banner-links mt-5 flex items-center justify-center gap-3 pointer-events-auto">
