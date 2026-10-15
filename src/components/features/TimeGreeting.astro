@@ -14,8 +14,10 @@ import greetings from "@/data/greetings.json";
 // （若之后仍有二次初始化，见下方对 220ms 那次重初始化的处理。）
 
 interface GreetingData {
+	ownerName?: string;
 	fallback?: string;
 	birthday?: string;
+	birthdayText?: string;
 	time?: { from: number; to: number; text: string }[];
 	weekday?: Record<string, string>;
 	dates?: Record<string, string>;
@@ -36,6 +38,18 @@ const data = greetings as GreetingData;
 			return (n < 10 ? "0" : "") + n;
 		}
 
+		// 把句子里的 {name} 换成站长名字。名字留空时，连它旁边的标点一起收干净，
+		// 避免出现「早安，。今天也来了呢。」这种残句。
+		function fill(text) {
+			if (!text) return text;
+			var name = (d.ownerName || "").trim();
+			if (name) return text.replace(/\{name\}/g, name);
+			return text
+				.replace(/，\{name\}/g, "")
+				.replace(/\{name\}，/g, "")
+				.replace(/\{name\}/g, "");
+		}
+
 		// 按优先级挑一句；都没命中就返回 null（此时保留主题原本的副标题轮播）
 		function pick(now) {
 			var mmdd = pad(now.getMonth() + 1) + "-" + pad(now.getDate());
@@ -43,15 +57,15 @@ const data = greetings as GreetingData;
 
 			// 1) 生日
 			if (d.birthday && d.birthday === mmdd) {
-				return "生日快乐。今天你是主角。";
+				return fill(d.birthdayText || "生日快乐。今天你是主角。");
 			}
 			// 2) 农历节日（需要年份，逐年查表）
-			if (d.lunar && d.lunar[ymd]) return d.lunar[ymd];
+			if (d.lunar && d.lunar[ymd]) return fill(d.lunar[ymd]);
 			// 3) 公历固定节日
-			if (d.dates && d.dates[mmdd]) return d.dates[mmdd];
+			if (d.dates && d.dates[mmdd]) return fill(d.dates[mmdd]);
 			// 4) 周末
 			var wd = String(now.getDay());
-			if (d.weekday && d.weekday[wd]) return d.weekday[wd];
+			if (d.weekday && d.weekday[wd]) return fill(d.weekday[wd]);
 			// 5) 时段
 			var h = now.getHours();
 			if (d.time) {
@@ -62,7 +76,7 @@ const data = greetings as GreetingData;
 						slot.from <= slot.to
 							? h >= slot.from && h < slot.to
 							: h >= slot.from || h < slot.to;
-					if (hit) return slot.text;
+					if (hit) return fill(slot.text);
 				}
 			}
 			return null;
