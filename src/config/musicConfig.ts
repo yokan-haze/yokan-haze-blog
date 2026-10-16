@@ -3,13 +3,17 @@ import type { MusicPlayerConfig } from "../types/musicConfig";
 // 音乐播放器配置
 export const musicPlayerConfig: MusicPlayerConfig = {
 	// 是否在导航栏显示音乐播放器入口
-	showInNavbar: false,
+	// 站长要求「在《我的》旁边加个乐库栏目」—— 打开它，导航栏会出现音乐入口。
+	showInNavbar: true,
 
 	// 是否在侧边栏显示音乐播放器组件
-	showInSidebar: false,
+	// 站长要求「主页放个音乐播放器」—— 打开它，首页侧栏出现播放器卡片。
+	showInSidebar: true,
 
 	// 使用方式："meting" 使用 Meting API，"local" 使用本地音乐列表
-	mode: "local",
+	// local = 用下面 playlist 里的本地文件（现在 playlist 是空的，所以之前什么都不显示）
+	// meting = 走在线 API，直接引用网易云歌单/单曲，不用自己传文件
+	mode: "meting",
 
 	// 默认音量 (0-1)
 	volume: 0.7,
