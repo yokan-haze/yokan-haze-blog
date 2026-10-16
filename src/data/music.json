@@ -1,0 +1,10 @@
+{
+	"_说明": "乐库歌单。在 Pages CMS 的「乐库」里增删歌曲，或在本地模式直接把 mp3 放进 public/assets/music/ 后在这里登记。",
+	"_两种模式": "musicConfig.ts 里的 mode：meting = 用下面的网易云歌单（不用传文件）；local = 用下面 playlist 里登记的本地文件（不依赖第三方服务，更稳）。",
+
+	"_网易云歌单": "meting 模式下播的是这个歌单。打开网易云 → 进歌单 → 地址栏 playlist?id= 后面那串数字填到这里。",
+	"neteasePlaylistId": "10046455237",
+
+	"_本地歌单": "local 模式用。name=歌名，artist=歌手，url=文件地址（放 public/assets/music/ 就写 /assets/music/文件名.mp3），cover=封面（可选），lrc=歌词（可选）。",
+	"playlist": []
+}

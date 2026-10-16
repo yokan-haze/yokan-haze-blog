@@ -1,0 +1,47 @@
+---
+import MusicPlayer from "@/components/features/MusicPlayer.astro";
+import MusicPlayerView from "@/components/features/MusicPlayerView.astro";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { musicPlayerConfig } from "@/config/musicConfig";
+import musicData from "@/data/music.json";
+
+// 乐库页面（/music/）—— 导航栏「乐库」入口指向这里。
+// 站长要的是「负责添加音乐、导入音乐」的入口。静态站点没有后台数据库，所以这里
+// 给出播放器本体 + 加歌说明。歌单数据源：src/data/music.json（后台「乐库」可编辑）。
+
+const playlistId = (musicData as { neteasePlaylistId?: string }).neteasePlaylistId ?? "(空)";
+const localCount = ((musicData as { playlist?: unknown[] }).playlist ?? []).length;
+const isOnline = musicPlayerConfig.mode === "meting";
+const modeText = isOnline
+	? "在线歌单模式：曲目来自网易云音乐，不需要把文件传到站点上。"
+	: "本地模式：曲目来自站点上的音频文件。";
+---
+
+<MainGridLayout title="乐库" description="这里放着我听的歌。">
+  <div class="card-base p-5 mb-4">
+    <div class="text-2xl font-bold text-90 mb-2">乐库</div>
+    <div class="text-75 text-sm">{modeText}</div>
+  </div>
+
+  <MusicPlayerView />
+  <MusicPlayer id="music-page" />
+
+  <div class="card-base p-5 mt-4">
+    <div class="text-lg font-bold text-90 mb-3">怎么往里加歌</div>
+    <ol class="text-sm text-75 leading-7 list-decimal pl-5">
+      <li>
+        <b>在线歌单（推荐，不用传文件）</b>：打开网易云音乐，进一个歌单，看地址栏
+        music.163.com/#/playlist?id= 后面那串数字，填到 src/data/music.json 的
+        neteasePlaylistId 里。当前填的是 {playlistId}。
+      </li>
+      <li>
+        <b>本地音频（不依赖外部服务，更稳）</b>：把 mp3 放进 public/assets/music/，
+        然后在 playlist 数组里登记（name 歌名、artist 歌手、url 文件地址、cover 封面可选、
+        lrc 歌词可选）。当前登记了 {localCount} 首。用这种方式要把 musicConfig.ts 的 mode 改回 local。
+      </li>
+    </ol>
+    <div class="text-xs text-50 mt-3">
+      在线歌单依赖第三方 Meting 服务，国内可用性会波动；放不出歌就改用本地模式。
+    </div>
+  </div>
+</MainGridLayout>

@@ -1,4 +1,5 @@
 import type { MusicPlayerConfig } from "../types/musicConfig";
+import musicDataRaw from "@/data/music.json";
 
 // 音乐播放器配置
 export const musicPlayerConfig: MusicPlayerConfig = {
@@ -34,7 +35,7 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 		// 类型：song=单曲, playlist=歌单, album=专辑, search=搜索, artist=艺术家
 		type: "playlist",
 		// 歌单/专辑/单曲 ID 或搜索关键词
-		id: "10046455237",
+		id: (musicDataRaw as { neteasePlaylistId?: string }).neteasePlaylistId ?? "10046455237",
 		// 认证 token（可选）
 		auth: "",
 		// 备用 API 配置（当主 API 失败时使用）
@@ -50,6 +51,6 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 	// 2. 或者直接填入歌词字符串内容
 	// lrc: "[00:00.00]歌词内容...",
 	local: {
-		playlist: [],
+		playlist: (musicDataRaw as { playlist?: MusicPlayerConfig["playlist"] }).playlist ?? [],
 	},
 };

@@ -112,6 +112,13 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	// 	],
 	// });
 
+			// 乐库（站长要求放在《我的》旁边）—— 打开音乐库页面，可播放与导入音乐
+		links.push({
+			name: "乐库",
+			url: "/music/",
+			icon: "material-symbols:library-music",
+		});
+
 	return { links } as NavBarConfig;
 };
 
