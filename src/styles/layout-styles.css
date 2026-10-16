@@ -702,16 +702,16 @@ html[data-wallpaper-mode="fullscreen"][data-fullscreen-layout="classic"] #wallpa
    代价：设置面板里的「卡片透明度」滑块从此失效（它写的还是旧变量）。
    要恢复的话，删掉这一段即可。
 
-   数值说明：亮色 0.12 已经是「几乎只剩一层雾」的程度；再低文字就真的糊在
-   壁纸上了。配合下面的文字描边与背景模糊，亮暗两种壁纸下都还能读。 */
+   数值说明：亮色 0.28 —— 先试 0.12 时站长反馈「过头了」，回拉到 0.28：
+   壁纸仍明显透出来，但文字底色托得住。配合下面的文字描边与背景模糊，亮暗两种壁纸下都还能读。 */
 :root {
-    --card-bg: rgb(255 255 255 / 0.12) !important;
-    --card-bg-transparent: rgb(255 255 255 / 0.1) !important;
+    --card-bg: rgb(255 255 255 / 0.28) !important;
+    --card-bg-transparent: rgb(255 255 255 / 0.24) !important;
 }
 
 html.dark {
-    --card-bg: rgb(22 22 28 / 0.28) !important;
-    --card-bg-transparent: rgb(22 22 28 / 0.24) !important;
+    --card-bg: rgb(22 22 28 / 0.42) !important;
+    --card-bg-transparent: rgb(22 22 28 / 0.36) !important;
 }
 
 /* 卡片带一点磨砂，壁纸透过来是柔的而不是刺的 —— 玻璃拟态的常规做法，
