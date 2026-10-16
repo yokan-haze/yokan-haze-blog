@@ -117,17 +117,23 @@ const data = greetings as GreetingData;
 			},
 		);
 
-		// ── 往下滚动时把站名与问候语淡出 ──
-		// 覆盖透明模式下壁纸是固定铺满的，那行字也就跟着"钉"在屏幕上，
-		// 内容滚上来时会压在文字下面。往下拉就让它淡出，回到顶部再淡回来。
-		// 做法：只在 <html> 上切一个属性，淡入淡出交给 CSS 过渡处理（不逐帧写行内样式）。
-		var SCROLL_THRESHOLD = 60; // 下拉多少像素后开始淡出
+		// ── 滚动时的显隐：下拉隐藏，上拉出现 ──
+		// 覆盖透明模式下壁纸是固定铺满的，那行字也跟着"钉"在屏幕上，内容滚上来时会
+		// 压在文字下面。所以往下拉时把它收起来；一旦开始往回拉，就让它回来
+		// （而不是等到快回到顶部才出现 —— 那样往回拉的过程中一直看不到字，很别扭）。
+		// 始终留在最顶部附近时一定是可见的。
+		var SCROLL_THRESHOLD = 60; // 超过这个位置才允许隐藏，避免顶部附近抖动
 		var scrolling = false;
+		var lastY = window.scrollY || document.documentElement.scrollTop || 0;
 
 		function syncScrollState() {
 			scrolling = false;
 			var y = window.scrollY || document.documentElement.scrollTop || 0;
-			document.documentElement.toggleAttribute("data-banner-text-hidden", y > SCROLL_THRESHOLD);
+			var goingDown = y > lastY;
+			lastY = y;
+			// 只有「往下拉」且「已离开顶部」才隐藏；往上拉或回到顶部都显示
+			var hide = goingDown && y > SCROLL_THRESHOLD;
+			document.documentElement.toggleAttribute("data-banner-text-hidden", hide);
 		}
 
 		function onScroll() {
