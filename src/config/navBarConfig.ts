@@ -81,6 +81,13 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			LinkPresets.MAL,
 		],
 	});
+		// 乐库（站长要求：放在《我的》旁边，紧挨着它）—— 打开音乐库页面，可播放与导入音乐
+		links.push({
+			name: "乐库",
+			url: "/music/",
+			icon: "material-symbols:library-music",
+		});
+
 
 	// 关于及其子菜单
 	links.push({
@@ -112,14 +119,7 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	// 	],
 	// });
 
-			// 乐库（站长要求放在《我的》旁边）—— 打开音乐库页面，可播放与导入音乐
-		links.push({
-			name: "乐库",
-			url: "/music/",
-			icon: "material-symbols:library-music",
-		});
-
-	return { links } as NavBarConfig;
+		return { links } as NavBarConfig;
 };
 
 // 导航搜索配置
