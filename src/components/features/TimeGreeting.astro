@@ -117,23 +117,18 @@ const data = greetings as GreetingData;
 			},
 		);
 
-		// ── 滚动时的显隐：下拉隐藏，上拉出现 ──
+		// ── 滚动时的显隐：一拉就隐藏，回到顶部才出现 ──
 		// 覆盖透明模式下壁纸是固定铺满的，那行字也跟着"钉"在屏幕上，内容滚上来时会
-		// 压在文字下面。所以往下拉时把它收起来；一旦开始往回拉，就让它回来
-		// （而不是等到快回到顶部才出现 —— 那样往回拉的过程中一直看不到字，很别扭）。
-		// 始终留在最顶部附近时一定是可见的。
-		var SCROLL_THRESHOLD = 60; // 超过这个位置才允许隐藏，避免顶部附近抖动
+		// 压在文字下面。所以只要有往下滚动的痕迹就收起来，只有回到顶部才让它回来。
+		// 阈值取得很小（5px）：站长要的是「一拉就消失」，但又不能取 0 ——
+		// 触控板/滚轮的细微回弹会让它在 0 和 1 之间抖动。
+		var SCROLL_THRESHOLD = 5;
 		var scrolling = false;
-		var lastY = window.scrollY || document.documentElement.scrollTop || 0;
 
 		function syncScrollState() {
 			scrolling = false;
 			var y = window.scrollY || document.documentElement.scrollTop || 0;
-			var goingDown = y > lastY;
-			lastY = y;
-			// 只有「往下拉」且「已离开顶部」才隐藏；往上拉或回到顶部都显示
-			var hide = goingDown && y > SCROLL_THRESHOLD;
-			document.documentElement.toggleAttribute("data-banner-text-hidden", hide);
+			document.documentElement.toggleAttribute("data-banner-text-hidden", y > SCROLL_THRESHOLD);
 		}
 
 		function onScroll() {
@@ -156,9 +151,10 @@ const data = greetings as GreetingData;
 
 <style>
 	/* 站名与问候语的淡入淡出。默认（在顶部）是可见的，往下滚过阈值后淡出。
-	   transition 加在默认状态上，进出都有动画。 */
+	   transition 加在默认状态上，进出都有动画。时长取 0.25s —— 站长要的是
+	   「一拉就消失」，太长的过渡会显得拖。 */
 	:global(.banner-home-text-overlay) {
-		transition: opacity 0.35s ease;
+		transition: opacity 0.25s ease;
 	}
 
 	:global(html[data-banner-text-hidden] .banner-home-text-overlay) {
