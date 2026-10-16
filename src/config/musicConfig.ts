@@ -51,6 +51,19 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 	// 2. 或者直接填入歌词字符串内容
 	// lrc: "[00:00.00]歌词内容...",
 	local: {
-		playlist: (musicDataRaw as { playlist?: MusicPlayerConfig["playlist"] }).playlist ?? [],
+		// 歌单数据源：src/data/music.json（后台「乐库」可编辑）。
+		// 这里写明确的元素类型，不用 MusicPlayerConfig["local"]["playlist"] ——
+		// 那个索引写法会被 TS 解析成 local 对象本身，报 ts(2339) Property 'playlist' does not exist
+		// （这就是 CI 上那次失败的原因）。
+		playlist:
+			(musicDataRaw as {
+				playlist?: {
+					name: string;
+					artist: string;
+					url: string;
+					cover?: string;
+					lrc?: string;
+				}[];
+			}).playlist ?? [],
 	},
 };
