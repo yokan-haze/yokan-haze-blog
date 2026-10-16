@@ -692,3 +692,50 @@ html[data-wallpaper-mode="fullscreen"][data-fullscreen-layout="classic"] #wallpa
     }
 }
 
+/* ─────────── 卡片「融入壁纸」───────────
+   站长要求卡片融入壁纸。查证后确认：只调 config 里的 cardOpacity 没用 ——
+   它只影响 --card-bg-transparent，而主要卡片（文章卡、侧栏组件）用的是
+   **不透明的** --card-bg（亮色 #fff / 暗色 oklch(...)），所以怎么调都不透。
+
+   这里直接改写这两个变量本身，并加 !important：
+   主题是在 Layout.css 里以同等优先级定义它们的，不加 !important 会被盖住。
+   代价：设置面板里的「卡片透明度」滑块从此失效（它写的还是旧变量）。
+   要恢复的话，删掉这一段即可。
+
+   数值说明：亮色 0.12 已经是「几乎只剩一层雾」的程度；再低文字就真的糊在
+   壁纸上了。配合下面的文字描边与背景模糊，亮暗两种壁纸下都还能读。 */
+:root {
+    --card-bg: rgb(255 255 255 / 0.12) !important;
+    --card-bg-transparent: rgb(255 255 255 / 0.1) !important;
+}
+
+html.dark {
+    --card-bg: rgb(22 22 28 / 0.28) !important;
+    --card-bg-transparent: rgb(22 22 28 / 0.24) !important;
+}
+
+/* 卡片带一点磨砂，壁纸透过来是柔的而不是刺的 —— 玻璃拟态的常规做法，
+   也让上面的文字更安静。 */
+#content-panel,
+#sidebar {
+    backdrop-filter: blur(7px) saturate(1.05);
+    -webkit-backdrop-filter: blur(7px) saturate(1.05);
+}
+
+/* 可读性补偿：卡片几乎没有底色了，文字等于直接压在壁纸上。
+   壁纸有亮部也有暗部，所以给文字加一层很柔的同�色描边 ——
+   亮处暗字有依托，暗处也不糊。描边很淡，不会看起来像加了边框。 */
+#content-panel,
+#sidebar {
+    text-shadow:
+        0 0 7px rgba(255, 255, 255, 0.5),
+        0 0 2px rgba(255, 255, 255, 0.4);
+}
+
+html.dark #content-panel,
+html.dark #sidebar {
+    text-shadow:
+        0 0 7px rgba(0, 0, 0, 0.6),
+        0 0 2px rgba(0, 0, 0, 0.5);
+}
+
