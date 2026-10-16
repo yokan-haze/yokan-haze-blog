@@ -189,8 +189,14 @@ const textData = Array.isArray(text) ? JSON.stringify(text) : text;
 
   .typewriter::after {
     content: "|";
-    animation: blink 1s infinite;
+    /* 光标必须绝对定位、不占排版流 —— 否则它会被算进「文字 + 光标」的整体宽度里，
+       居中时把文字本身挤偏（实测：文字中心 680，容器中心 685，偏左 5px）。
+       表现就是站长反馈的「主标题是正的、下面那行问候语看着没对齐」。
+       改成绝对定位后，参与居中计算的只有文字，光标贴在文字右侧。 */
+    position: absolute;
+    left: 100%;
     margin-left: 2px;
+    animation: blink 1s infinite;
   }
 
   @keyframes blink {
