@@ -1,0 +1,141 @@
+---
+import { Icon } from "astro-icon/components";
+import { profileConfig } from "@/config";
+import { getSortedPosts } from "@/utils/content-utils";
+
+// 首页顶部的「个人中心」大卡：头像 + 名字 + 签名 + 三个统计 + 社交图标。
+//
+// 为什么单独做这一块：站长看到别的博客把个人介绍做成页面顶部一整块（而不是塞在
+// 侧栏里那张窄卡），觉得很不错。这块卡的宽度是**整页通栏**（放在 main-grid 之上），
+// 所以比侧栏那张显眼得多。
+//
+// 头像与名字、签名都直接复用 profileConfig —— 也就是 Pages CMS「站点外观」里维护的
+// 那一份，改一次两边同时变，不会出现「换头像后顶部还是旧的」这种不一致。
+
+const posts = await getSortedPosts();
+
+const postCount = posts.length;
+const categoryCount = new Set(posts.map((p) => p.data.category).filter(Boolean)).size;
+const tagCount = new Set(posts.flatMap((p) => p.data.tags ?? []).filter(Boolean)).size;
+
+const stats = [
+	{ label: "文章", value: postCount },
+	{ label: "分类", value: categoryCount },
+	{ label: "标签", value: tagCount },
+];
+
+const links = (profileConfig.links ?? []).slice(0, 5);
+
+// 头像路径处理：与 Profile 组件保持同一套规则
+// —— 以 "/" 开头或 http(s) 开头的走原样，其余交给 Astro 优化
+const avatar = profileConfig.avatar;
+const avatarIsStatic = !avatar || avatar.startsWith("/") || /^https?:\/\//.test(avatar);
+let avatarSrc = avatar;
+if (avatar && !avatarIsStatic) {
+	const mod = import.meta.glob<{ default: ImageMetadata }>("/src/assets/images/**/*", {
+		eager: true,
+	});
+	const key = `/src/${avatar}`;
+	if (mod[key]) avatarSrc = mod[key].default.src;
+}
+---
+
+<div class="card-base profile-hero onload-animation w-full mb-4 px-5 py-4 md:px-7 md:py-5">
+	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+		<!-- 左：头像 + 名字 + 签名 -->
+		<div class="flex items-center gap-4 min-w-0">
+			{
+				avatarSrc && (
+					<img
+						src={avatarSrc}
+						alt={profileConfig.name}
+						class="profile-hero-avatar shrink-0 rounded-full object-cover"
+						loading="eager"
+						decoding="async"
+					/>
+				)
+			}
+			<div class="min-w-0">
+				<div class="text-xl md:text-2xl font-bold text-90 truncate">
+					{profileConfig.name}
+				</div>
+				{
+					profileConfig.bio && (
+						<div class="text-sm md:text-base text-75 mt-1 truncate">
+							{profileConfig.bio}
+						</div>
+					)
+				}
+			</div>
+		</div>
+
+		<!-- 右：统计 + 社交图标 -->
+		<div class="flex items-center justify-between gap-5 md:justify-end md:gap-7 shrink-0">
+			<div class="flex items-center gap-5 md:gap-7">
+				{
+					stats.map((s) => (
+						<div class="text-center">
+							<div class="text-xl md:text-2xl font-bold text-(--primary) leading-none">
+								{s.value}
+							</div>
+							<div class="text-xs text-75 mt-1">{s.label}</div>
+						</div>
+					))
+				}
+			</div>
+
+			{
+				links.length > 0 && (
+					<div class="flex items-center gap-2">
+						{links.map((link) => (
+							<a
+								href={link.url}
+								aria-label={link.name}
+								title={link.name}
+								target={link.url.startsWith("http") ? "_blank" : undefined}
+								rel={link.url.startsWith("http") ? "noopener" : undefined}
+								class="profile-hero-link inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+							>
+								<Icon name={link.icon} class="text-lg" />
+							</a>
+						))}
+					</div>
+				)
+			}
+		</div>
+	</div>
+</div>
+
+<style>
+	.profile-hero-avatar {
+		width: 64px;
+		height: 64px;
+		border: 2px solid rgba(255, 255, 255, 0.55);
+		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+	}
+
+	@media (min-width: 768px) {
+		.profile-hero-avatar {
+			width: 76px;
+			height: 76px;
+		}
+	}
+
+	.profile-hero-link {
+		color: var(--primary);
+		background: rgba(128, 128, 128, 0.12);
+	}
+
+	.profile-hero-link:hover {
+		background: var(--primary);
+		color: #fff;
+	}
+
+	/* 窄屏：头像与文字左对齐，统计与图标各占一行，避免挤在一起 */
+	@media (max-width: 767px) {
+		.profile-hero .profile-hero-avatar {
+			width: 56px;
+			height: 56px;
+		}
+	}
+</style>

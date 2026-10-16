@@ -107,6 +107,10 @@ const {
         {/* 列几何唯一真源 = computeGridColumns()，SSR 写在父级 #content-panel-inner 上
             （页脚作为兄弟节点也要拿到 --content-ratio-*）。子元素无需定位类：
             侧栏包裹层是 display:contents，真正的 grid item 是内层元素 */}
+        {/* 网格上方的通栏区域。首页用它放「个人中心」大卡（ProfileHero）；
+            其他页面不填这个插槽，等于不存在，不影响原有布局。 */}
+        <slot name="above-grid" />
+
         <div id="main-grid"
           class="transition duration-700 w-full left-0 right-0 grid mx-auto gap-4 px-2 md:px-4 mobile-no-sidebar"
           {...gridDataAttrs}
