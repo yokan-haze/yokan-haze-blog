@@ -19,7 +19,9 @@ interface GreetingData {
 	birthday?: string;
 	birthdayText?: string;
 	time?: { from: number; to: number; text: string }[];
-	weekday?: Record<string, string>;
+	weekendTime?: { from: number; to: number; text: string }[];
+	fridayEveningFrom?: number;
+	fridayEveningText?: string;
 	dates?: Record<string, string>;
 	lunar?: Record<string, string>;
 }
@@ -50,10 +52,24 @@ const data = greetings as GreetingData;
 				.replace(/\{name\}/g, "");
 		}
 
+		// 在一个时段表里找当前该显示的那句
+		function slotText(slots, h) {
+			if (!slots) return null;
+			for (var i = 0; i < slots.length; i++) {
+				var s = slots[i];
+				// from > to 表示跨零点（例如 22 -> 3）
+				var hit = s.from <= s.to ? h >= s.from && h < s.to : h >= s.from || h < s.to;
+				if (hit) return s.text;
+			}
+			return null;
+		}
+
 		// 按优先级挑一句；都没命中就返回 null（此时保留主题原本的副标题轮播）
 		function pick(now) {
 			var mmdd = pad(now.getMonth() + 1) + "-" + pad(now.getDate());
 			var ymd = now.getFullYear() + "-" + mmdd;
+			var h = now.getHours();
+			var dow = now.getDay();
 
 			// 1) 生日
 			if (d.birthday && d.birthday === mmdd) {
@@ -63,23 +79,17 @@ const data = greetings as GreetingData;
 			if (d.lunar && d.lunar[ymd]) return fill(d.lunar[ymd]);
 			// 3) 公历固定节日
 			if (d.dates && d.dates[mmdd]) return fill(d.dates[mmdd]);
-			// 4) 周末
-			var wd = String(now.getDay());
-			if (d.weekday && d.weekday[wd]) return fill(d.weekday[wd]);
-			// 5) 时段
-			var h = now.getHours();
-			if (d.time) {
-				for (var i = 0; i < d.time.length; i++) {
-					var slot = d.time[i];
-					// from > to 表示跨零点（例如 22 -> 3）
-					var hit =
-						slot.from <= slot.to
-							? h >= slot.from && h < slot.to
-							: h >= slot.from || h < slot.to;
-					if (hit) return fill(slot.text);
-				}
+			// 4) 周五晚上
+			if (dow === 5 && d.fridayEveningText && typeof d.fridayEveningFrom === "number" && h >= d.fridayEveningFrom) {
+				return fill(d.fridayEveningText);
 			}
-			return null;
+			// 5) 时段。周六周日走 weekendTime，其余走 time。
+			//    注意：这里**不能**用「一条周末文案盖住整天」——那样连着两天都是同一句话，
+			//    看起来像坏掉了（真实发生过，站长以为问候语没生效）。
+			var isWeekend = dow === 6 || dow === 0;
+			var line = isWeekend ? slotText(d.weekendTime, h) : null;
+			if (!line) line = slotText(d.time, h);
+			return line ? fill(line) : null;
 		}
 
 		function apply() {
