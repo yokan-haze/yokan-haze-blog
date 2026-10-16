@@ -699,19 +699,22 @@ html[data-wallpaper-mode="fullscreen"][data-fullscreen-layout="classic"] #wallpa
 
    这里直接改写这两个变量本身，并加 !important：
    主题是在 Layout.css 里以同等优先级定义它们的，不加 !important 会被盖住。
-   代价：设置面板里的「卡片透明度」滑块从此失效（它写的还是旧变量）。
-   要恢复的话，删掉这一段即可。
 
-   数值说明：亮色 0.28 —— 先试 0.12 时站长反馈「过头了」，回拉到 0.28：
-   壁纸仍明显透出来，但文字底色托得住。配合下面的文字描边与背景模糊，亮暗两种壁纸下都还能读。 */
+   **数值不再是写死的** —— 站长要求「给我一个能自己调透明度的东西」。
+   这里用 var(--card-transparent-opacity) 读主题设置面板里「卡片透明度」滑块的值
+   （滑块把它写在 <html> 的行内样式上，:root 能继承到），所以拖滑块就能实时改
+   卡片透明度，拖完存进浏览器 localStorage，刷新仍在。
+   括号里的 0.28 只是「滑块从未被设置过」时的兜底 —— 这个数值来自站长实际看过的
+   反馈：0.6 太实、0.12 过头，0.28 正好。 */
 :root {
-    --card-bg: rgb(255 255 255 / 0.28) !important;
-    --card-bg-transparent: rgb(255 255 255 / 0.24) !important;
+    --card-bg: rgb(255 255 255 / var(--card-transparent-opacity, 0.28)) !important;
+    --card-bg-transparent: rgb(255 255 255 / calc(var(--card-transparent-opacity, 0.28) * 0.86)) !important;
 }
 
+/* 暗色下同一个滑块值要更实一点，否则深色卡片会糊在暗壁纸里 */
 html.dark {
-    --card-bg: rgb(22 22 28 / 0.42) !important;
-    --card-bg-transparent: rgb(22 22 28 / 0.36) !important;
+    --card-bg: rgb(22 22 28 / calc(var(--card-transparent-opacity, 0.28) * 1.5)) !important;
+    --card-bg-transparent: rgb(22 22 28 / calc(var(--card-transparent-opacity, 0.28) * 1.3)) !important;
 }
 
 /* 卡片带一点磨砂，壁纸透过来是柔的而不是刺的 —— 玻璃拟态的常规做法，
