@@ -416,6 +416,37 @@ content:
                 type: boolean
                 default: false
 
+      # 社交入口：首页「个人中心」大卡、横幅标题下方、侧栏个人信息卡三处共用这一份。
+      - name: socialLinks
+        label: 社交入口（GitHub / B站 / 邮箱…）
+        type: file
+        path: src/data/socialLinks.json
+        format: json
+        fields:
+          - name: links
+            label: 入口列表（最多显示前 5 个）
+            type: object
+            list: true
+            fields:
+              - name: name
+                label: 名称（鼠标悬停时显示，也用于无障碍朗读）
+                type: string
+                required: true
+              - name: icon
+                label: 图标
+                type: string
+                required: true
+                description: Iconify 图标名。常用：fa7-brands:github、fa7-brands:bilibili、fa7-brands:weibo、fa7-brands:qq、fa7-brands:zhihu、fa7-brands:steam、fa7-solid:envelope（邮箱）、fa7-solid:rss（订阅）。到 icones.js.org 可以搜更多
+              - name: url
+                label: 链接地址
+                type: string
+                required: true
+                description: 站内地址以 / 开头（如 /about/）；站外写完整 https:// 开头，会自动新窗口打开
+              - name: showName
+                label: 在图标旁显示名称
+                type: boolean
+                default: false
+
   # ─────────── 页面内容 ───────────
   - name: pages
     label: 页面内容

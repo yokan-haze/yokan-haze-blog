@@ -1,0 +1,20 @@
+{
+	"_说明": "站点社交入口。显示在首页「个人中心」大卡和侧栏个人信息卡上，最多显示前 5 个。改这个文件等于改两处，不需要动代码。",
+	"_图标说明": "icon 用 Iconify 名称。常用：fa7-brands:github / fa7-brands:bilibili / fa7-brands:weibo / fa7-brands:qq / fa7-brands:weixin / fa7-brands:zhihu / fa7-brands:steam / fa7-brands:x-twitter / fa7-solid:envelope（邮箱）/ fa7-solid:rss（订阅）",
+	"_地址说明": "站内地址以 / 开头（如 /about/）；站外地址写完整 https://。站外链接会自动新窗口打开。",
+
+	"links": [
+		{
+			"name": "GitHub",
+			"icon": "fa7-brands:github",
+			"url": "https://github.com/yokan-haze",
+			"showName": false
+		},
+		{
+			"name": "RSS",
+			"icon": "fa7-solid:rss",
+			"url": "/rss/",
+			"showName": false
+		}
+	]
+}

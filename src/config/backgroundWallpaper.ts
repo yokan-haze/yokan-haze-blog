@@ -1,5 +1,6 @@
 import type { BackgroundWallpaperConfig } from "@/types/backgroundWallpaper";
 import wallpapersRaw from "@/data/wallpapers.json";
+import socialLinksRaw from "@/data/socialLinks.json";
 
 // ⚠️ 防御性读取：Pages CMS 保存时会丢掉空值字段（例如把所有背景视频都删掉时，
 // videos 这个键会从 JSON 里消失）。键一旦消失，TypeScript 从 JSON 推断的类型就变了，
@@ -126,19 +127,10 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 			// 是否显示标题下方的链接图标
 			linksEnable: true,
 			// 首页横幅标题下方的链接图标（可选，支持 showName 显示文字）
+			// 与「个人中心」大卡、侧栏个人信息卡共用同一份数据：
+			// src/data/socialLinks.json —— 在 Pages CMS「站点外观」里改一处，三处同时变。
 			// 图标支持 Iconify 格式：fa7-brands:github、fa7-solid:envelope、mdi:rss 等
-			links: [
-				{
-					name: "RSS",
-					icon: "fa7-solid:rss",
-					url: "/rss/",
-				},
-				{
-					name: "Atom",
-					icon: "fa7-solid:atom",
-					url: "/atom/",
-				},
-			],
+			links: (socialLinksRaw as { links?: { name: string; icon: string; url: string; showName?: boolean }[] }).links ?? [],
 		},
 		// 壁纸轮播配置，横幅壁纸和全屏壁纸共享，仅在配置多张图片时生效
 		carousel: {

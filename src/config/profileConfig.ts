@@ -1,4 +1,5 @@
 import siteAppearanceRaw from "@/data/siteAppearance.json";
+import socialLinksRaw from "@/data/socialLinks.json";
 import type { ProfileConfig } from "../types/profileConfig";
 
 // ⚠️ 防御性读取：Pages CMS 保存时会丢掉空值字段，键消失会让 TypeScript 从 JSON
@@ -27,18 +28,9 @@ export const profileConfig: ProfileConfig = {
 	// 如果想使用尚未包含相应的图标集，则需要安装它
 	// `pnpm add @iconify-json/<icon-set-name>`
 	// showName: true 时显示图标和名称，false 时只显示图标
-	links: [
-		{
-			name: "RSS",
-			icon: "fa7-solid:rss",
-			url: "/rss/",
-			showName: false,
-		},
-		{
-			name: "Atom",
-			icon: "fa7-solid:atom",
-			url: "/atom/",
-			showName: false,
-		},
-	],
+	//
+	// 这些入口改由 src/data/socialLinks.json 维护，可在 Pages CMS 的「站点外观」
+	// 板块里直接增删。这里做防御性读取：JSON 里缺字段或整个 links 数组被清空都不会报错。
+	// （Pages CMS 保存时会丢掉空值字段 —— 直接链式访问会在构建期报 ts(2339)，见 Issue #9）
+	links: (socialLinksRaw as { links?: ProfileConfig["links"] }).links ?? [],
 };
