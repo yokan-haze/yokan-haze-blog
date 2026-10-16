@@ -303,8 +303,11 @@ html[data-wallpaper-mode="overlay"] #wallpaper-wrapper {
     display: block !important;
 }
 
-/* Overlay 模式隐藏 Banner 专属元素 */
-#wallpaper-wrapper.wallpaper-overlay .banner-home-text-overlay,
+/* Overlay 模式隐藏 Banner 专属元素
+   注意：.banner-home-text-overlay（首页大字标题 + 问候语）**不在隐藏之列** ——
+   站长希望在覆盖透明模式下也能看到站名与问候语，所以它改为被下方的规则
+   重新定位到「内容面板上方那片壁纸区域」里，而不是隐藏。
+   页面标题与文章元信息仍然隐藏：它们在覆盖透明模式下会和内容面板打架。 */
 #wallpaper-wrapper.wallpaper-overlay .banner-page-title-overlay,
 #wallpaper-wrapper.wallpaper-overlay .banner-post-meta-overlay {
     display: none !important;
@@ -318,11 +321,26 @@ html[data-wallpaper-mode="overlay"] #wallpaper-wrapper {
 html[data-wallpaper-mode="none"] #wallpaper-wrapper {
     display: none !important;
 }
-/* overlay 模式：隐藏横幅标题/元信息覆盖层（镜像 .wallpaper-overlay 类规则） */
-html[data-wallpaper-mode="overlay"] #wallpaper-wrapper .banner-home-text-overlay,
+/* overlay 模式：页面标题与元信息覆盖层仍然隐藏（会和内容面板打架）。
+   首页大字标题 + 问候语不隐藏，改由下面那条规则重新定位。 */
 html[data-wallpaper-mode="overlay"] #wallpaper-wrapper .banner-page-title-overlay,
 html[data-wallpaper-mode="overlay"] #wallpaper-wrapper .banner-post-meta-overlay {
     display: none !important;
+}
+
+/* overlay 模式：首页站名与问候语重新定位 ——
+   这个模式没有横幅区，但首页的内容面板是从 --cfg-overlay-content-top 开始的
+   （站长配的是 60vh），导航栏到内容面板之间那片壁纸是空的，正好放它。
+   只改定位、不改外观：字体、阴影、打字机效果全部沿用。 */
+html[data-wallpaper-mode="overlay"] #wallpaper-wrapper .banner-home-text-overlay,
+#wallpaper-wrapper.wallpaper-overlay .banner-home-text-overlay {
+    display: flex !important;
+    top: 5.5rem !important; /* 导航栏下方 */
+    bottom: auto !important;
+    height: calc(var(--cfg-overlay-content-top, 5.5rem) - 5.5rem) !important;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* 文字不挡壁纸的鼠标交互 */
 }
 /* none / overlay：内容区从导航栏下方开始（SSR 按 config banner 渲染时内容在横幅下方） */
 html[data-wallpaper-mode="none"] #content-panel {
