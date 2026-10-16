@@ -742,3 +742,13 @@ html.dark #sidebar {
         0 0 2px rgba(0, 0, 0, 0.5);
 }
 
+
+/* ─────────── 侧栏个人卡的头像收窄 ───────────
+   站长要求「不要太大」。主题默认这张头像在桌面端是 lg:w-full —— 占满整个侧栏宽度，
+   在单侧栏布局下会显得很大。这里给它一个上限并居中，不再撑满。
+   想再调大小就改下面这个 max-width（180 更小、260 更大）。 */
+.profile-avatar-image {
+    max-width: 220px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
