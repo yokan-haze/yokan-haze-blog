@@ -194,7 +194,11 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 背景模糊度
 		blur: 10,
 		// 卡片透明度，0-1之间，值越小越透明
-		cardOpacity: 0.6,
+		// 站长要求「让小组件更融入壁纸」—— 从主题默认的 0.6 降到 0.35，
+		// 卡片变成一层很淡的纱，壁纸透得出来，但仍能看清文字。
+		// 访客仍可在设置面板里拖「卡片透明度」滑块临时调整；注意滑块调过之后
+		// 会存进浏览器 localStorage，会盖住这里的默认值（想回到新默认需把滑块拖回去）。
+		cardOpacity: 0.35,
 	},
 	// 全屏壁纸模式特有配置
 	// 壁纸模糊度(blur)、卡片透明度(cardOpacity)、层级(zIndex) 复用上方 overlay 模式的配置；
