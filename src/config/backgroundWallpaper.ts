@@ -125,10 +125,11 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 				pauseTime: 2000,
 			},
 			// 是否显示标题下方的链接图标
-			linksEnable: true,
+			// 站长要求「所有这样的东西都删掉」—— 关掉。links 配置本身保留着，
+			// 想显示把这里改回 true 即可（内容仍来自 src/data/socialLinks.json）。
+			linksEnable: false,
 			// 首页横幅标题下方的链接图标（可选，支持 showName 显示文字）
-			// 与「个人中心」大卡、侧栏个人信息卡共用同一份数据：
-			// src/data/socialLinks.json —— 在 Pages CMS「站点外观」里改一处，三处同时变。
+			// 数据源：src/data/socialLinks.json —— 可在 Pages CMS「站点外观」里维护。
 			// 图标支持 Iconify 格式：fa7-brands:github、fa7-solid:envelope、mdi:rss 等
 			links: (socialLinksRaw as { links?: { name: string; icon: string; url: string; showName?: boolean }[] }).links ?? [],
 		},

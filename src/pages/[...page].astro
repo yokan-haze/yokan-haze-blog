@@ -29,8 +29,8 @@ const heading =
 ---
 
 <MainGridLayout heading={heading}>
-  {/* 首页第一页顶部放「个人中心」大卡；翻页后不再重复 */}
-  {page.currentPage === 1 && <ProfileHero slot="above-grid" />}
+  {/* 顶部「个人中心」大卡已按站长要求移除（与侧栏个人卡重复，窄屏还会压住横幅文字）。组件文件保留，想恢复把下面那行取消注释即可。 */}
+  {/* {page.currentPage === 1 && <ProfileHero slot="above-grid" />} */}
   <PostPage page={page} />
   {
     page.total > page.size && (
