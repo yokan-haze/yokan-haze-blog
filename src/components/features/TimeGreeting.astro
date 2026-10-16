@@ -160,22 +160,30 @@ const data = greetings as GreetingData;
 </script>
 
 <style>
-	/* 站名与问候语的淡入淡出。默认（在顶部）是可见的，往下滚过阈值后淡出。
-	   transition 加在默认状态上，进出都有动画。时长取 0.25s —— 站长要的是
-	   「一拉就消失」，太长的过渡会显得拖。 */
+	/* 站名与问候语的退场与回来。
+	   站长反馈 0.25 秒「有点太快」—— 配合 5px 的即时触发，看起来像"啪"地跳掉。
+	   所以：触发距离不变（一拉就走，这是要的手感），但退场本身放慢到 0.45 秒、
+	   用 ease-out 收尾，并加 6px 的上移 —— 像往后退了一点，而不是单纯变透明。 */
 	:global(.banner-home-text-overlay) {
-		transition: opacity 0.25s ease;
+		transition:
+			opacity 0.45s ease-out,
+			transform 0.45s ease-out;
 	}
 
 	:global(html[data-banner-text-hidden] .banner-home-text-overlay) {
 		opacity: 0 !important;
+		transform: translateY(-6px);
 		pointer-events: none;
 	}
 
-	/* 尊重「减少动态效果」：直接切换，不做过渡 */
+	/* 尊重「减少动态效果」：直接切换，不做过渡也不位移 */
 	@media (prefers-reduced-motion: reduce) {
 		:global(.banner-home-text-overlay) {
 			transition: none;
+		}
+
+		:global(html[data-banner-text-hidden] .banner-home-text-overlay) {
+			transform: none;
 		}
 	}
 </style>
