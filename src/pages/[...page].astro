@@ -29,8 +29,8 @@ const heading =
 ---
 
 <MainGridLayout heading={heading}>
-  {/* 顶部「个人中心」大卡已按站长要求移除（与侧栏个人卡重复，窄屏还会压住横幅文字）。组件文件保留，想恢复把下面那行取消注释即可。 */}
-  {/* {page.currentPage === 1 && <ProfileHero slot="above-grid" />} */}
+  {/* 首页顶部：头像 + 名字 + 签名 + 统计。站长要求头像尽量大。 */}
+  {page.currentPage === 1 && <ProfileHero slot="above-grid" />}
   <PostPage page={page} />
   {
     page.total > page.size && (

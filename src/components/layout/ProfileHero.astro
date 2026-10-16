@@ -1,5 +1,4 @@
 ---
-import { Icon } from "astro-icon/components";
 import { profileConfig } from "@/config";
 import { getSortedPosts } from "@/utils/content-utils";
 
@@ -24,7 +23,6 @@ const stats = [
 	{ label: "标签", value: tagCount },
 ];
 
-const links = (profileConfig.links ?? []).slice(0, 5);
 
 // 头像路径处理：与 Profile 组件保持同一套规则
 // —— 以 "/" 开头或 http(s) 开头的走原样，其余交给 Astro 优化
@@ -83,59 +81,36 @@ if (avatar && !avatarIsStatic) {
 					))
 				}
 			</div>
-
-			{
-				links.length > 0 && (
-					<div class="flex items-center gap-2">
-						{links.map((link) => (
-							<a
-								href={link.url}
-								aria-label={link.name}
-								title={link.name}
-								target={link.url.startsWith("http") ? "_blank" : undefined}
-								rel={link.url.startsWith("http") ? "noopener" : undefined}
-								class="profile-hero-link inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors"
-							>
-								<Icon name={link.icon} class="text-lg" />
-							</a>
-						))}
-					</div>
-				)
-			}
 		</div>
 	</div>
 </div>
 
 <style>
 	.profile-hero-avatar {
-		width: 64px;
-		height: 64px;
-		border: 2px solid rgba(255, 255, 255, 0.55);
-		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+		/* 站长要求「头像和卡片一样大」—— 卡片上下内边距各 1.25rem，
+		   所以头像按卡片内容高度撑满，视觉上几乎等于卡片本身的高度。 */
+		width: 104px;
+		height: 104px;
+		border: 3px solid rgba(255, 255, 255, 0.6);
+		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 	}
 
 	@media (min-width: 768px) {
 		.profile-hero-avatar {
-			width: 76px;
-			height: 76px;
+			width: 128px;
+			height: 128px;
 		}
 	}
 
-	.profile-hero-link {
-		color: var(--primary);
-		background: rgba(128, 128, 128, 0.12);
-	}
+	
 
-	.profile-hero-link:hover {
-		background: var(--primary);
-		color: #fff;
-	}
+	
 
-	/* 窄屏：头像与文字左对齐，统计与图标各占一行，避免挤在一起 */
+	/* 窄屏：头像也保持较大，但别把文字挤没 */
 	@media (max-width: 767px) {
 		.profile-hero .profile-hero-avatar {
-			width: 56px;
-			height: 56px;
+			width: 84px;
+			height: 84px;
 		}
 	}
 </style>

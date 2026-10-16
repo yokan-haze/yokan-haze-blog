@@ -188,7 +188,8 @@ export const siteConfig: SiteConfig = {
 		// 网格模式的封面固定在卡片顶部，不受此项影响
 		coverPosition: "right",
 		// 文章简介显示行数，设为 0 则不截断
-		descriptionLines: 2,
+		// 站长反馈卡片偏大，从 2 行收到 1 行 —— 这一项直接决定列表模式卡片的高度。
+		descriptionLines: 1,
 		// 文章卡片底部统计和发布日期是否显示图标
 		showStatsIcons: true,
 		// 标签显示位置
