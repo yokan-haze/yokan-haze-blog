@@ -190,7 +190,11 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 					image: {
 						src: "/assets/images/ad/ad1.webp",
 						alt: "广告横幅",
-						link: "https://haoka.lot-ml.com/plugreg.html?agentid=1423316",
+						// 这里原本是上游主题作者的手机卡返利链接
+						// （https://haoka.lot-ml.com/plugreg.html?agentid=…）——
+						// 访客点进去办卡，佣金进的是主题作者的口袋。已清空。
+						// 要挂自己的广告，把 link 换成你自己的地址并把上面的 enable 改成 true。
+						link: "",
 						external: true,
 					},
 					// 是否允许关闭广告

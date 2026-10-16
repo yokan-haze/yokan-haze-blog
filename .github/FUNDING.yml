@@ -1,5 +1,14 @@
-# ko_fi
-ko_fi: cuteleaf
-
-# 爱发电（推荐国内用户）
-custom: ['https://ifdian.net/a/cuteleaf']
+# 赞助配置（GitHub 仓库页右上角的「Sponsor」按钮由这个文件驱动）
+#
+# 这里原本填的是上游主题作者的收款渠道：
+#     ko_fi: cuteleaf
+#     custom: ['https://ifdian.net/a/cuteleaf']
+# 那会导致任何人打开本站仓库、点「Sponsor」都被引到**主题作者**的收款页 ——
+# 那不是本站站长的账号。已清空。
+#
+# 如果站长以后想开通自己的赞助渠道，把下面任意一项取消注释并填上自己的账号即可
+# （留空 / 全部注释掉时，GitHub 不会显示 Sponsor 按钮）：
+#
+# github: [your-github-username]
+# ko_fi: your-kofi-id
+# custom: ['https://your-donation-page']

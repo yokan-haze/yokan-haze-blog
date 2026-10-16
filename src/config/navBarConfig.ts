@@ -97,27 +97,19 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	});
 
 	// 自定义导航栏链接
-	links.push({
-		name: "链接",
-		url: "#",
-		icon: "material-symbols:link",
-		// 子菜单
-		children: [
-			{
-				name: "Firefly文档",
-				url: "https://docs-firefly.cuteleaf.cn",
-				external: true,
-				icon: "material-symbols:docs",
-			},
-		],
-	});
-
-	// 文档链接
+	//
+	// 这里原本有一个「链接」下拉菜单，里面唯一的子项是指向**上游主题作者文档站**
+	// （docs-firefly.cuteleaf.cn）的「Firefly文档」。它出现在本站每一页的导航栏里，
+	// 相当于把访客往外送。已整体移除。
+	//
+	// 想加自己的外链，照下面写（取消注释并改内容）：
 	// links.push({
-	// 	name: "文档",
-	// 	url: "https://docs-firefly.cuteleaf.cn",
-	// 	external: true,
-	// 	icon: "material-symbols:docs",
+	// 	name: "友链",
+	// 	url: "/friends/",
+	// 	icon: "material-symbols:link",
+	// 	children: [
+	// 		{ name: "示例", url: "https://example.com", external: true, icon: "material-symbols:link" },
+	// 	],
 	// });
 
 	return { links } as NavBarConfig;
