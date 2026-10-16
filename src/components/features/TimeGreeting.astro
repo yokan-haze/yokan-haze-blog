@@ -116,5 +116,54 @@ const data = greetings as GreetingData;
 				});
 			},
 		);
+
+		// ── 往下滚动时把站名与问候语淡出 ──
+		// 覆盖透明模式下壁纸是固定铺满的，那行字也就跟着"钉"在屏幕上，
+		// 内容滚上来时会压在文字下面。往下拉就让它淡出，回到顶部再淡回来。
+		// 做法：只在 <html> 上切一个属性，淡入淡出交给 CSS 过渡处理（不逐帧写行内样式）。
+		var SCROLL_THRESHOLD = 60; // 下拉多少像素后开始淡出
+		var scrolling = false;
+
+		function syncScrollState() {
+			scrolling = false;
+			var y = window.scrollY || document.documentElement.scrollTop || 0;
+			document.documentElement.toggleAttribute("data-banner-text-hidden", y > SCROLL_THRESHOLD);
+		}
+
+		function onScroll() {
+			if (scrolling) return;
+			scrolling = true;
+			// 用 rAF 合并高频滚动事件；再加一个 setTimeout 兜底 ——
+			// rAF 在某些环境（例如无头浏览器的虚拟时间）会被挂起，
+			// 有兜底才能保证状态最终一定会同步。两者都是幂等的，重复执行无害。
+			requestAnimationFrame(syncScrollState);
+			setTimeout(syncScrollState, 50);
+		}
+
+		window.addEventListener("scroll", onScroll, { passive: true });
+		// Swup 切页后滚动位置会重置，同步一次
+		document.addEventListener("swup:page:view", syncScrollState);
+		syncScrollState();
+		window.__bannerScrollInit = true; // 供测试探针确认监听已挂上
 	})();
 </script>
+
+<style>
+	/* 站名与问候语的淡入淡出。默认（在顶部）是可见的，往下滚过阈值后淡出。
+	   transition 加在默认状态上，进出都有动画。 */
+	:global(.banner-home-text-overlay) {
+		transition: opacity 0.35s ease;
+	}
+
+	:global(html[data-banner-text-hidden] .banner-home-text-overlay) {
+		opacity: 0 !important;
+		pointer-events: none;
+	}
+
+	/* 尊重「减少动态效果」：直接切换，不做过渡 */
+	@media (prefers-reduced-motion: reduce) {
+		:global(.banner-home-text-overlay) {
+			transition: none;
+		}
+	}
+</style>
