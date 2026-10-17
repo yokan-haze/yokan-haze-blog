@@ -752,3 +752,18 @@ html.dark #sidebar {
     margin-left: auto !important;
     margin-right: auto !important;
 }
+
+/* ─────────── 壁纸首帧占位（消除"一开始是黑的"）───────────
+   站长反馈：打开网站的瞬间是一整片黑，过几秒壁纸才出来。
+   原因：壁纸是视频，视频没加载/没起播之前 #wallpaper-wrapper 没有底图，
+   而暗色主题下页面背景接近黑色，所以那片区域看起来就是纯黑。
+
+   做法：把视频第 2 秒的一帧抽成 32 KB 的 WebP 当底图垫在下面。
+   视频一到，画面自然覆盖上去，视觉上就是"图 -> 视频"的顺滑过渡，
+   中间不再出现黑屏。底图很小，不会明显拖慢首屏。 */
+#wallpaper-wrapper {
+	background-image: url("/assets/images/wallpaper-poster.webp");
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
