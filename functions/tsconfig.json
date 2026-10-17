@@ -1,0 +1,20 @@
+{
+  "_说明": "functions/ 单独一份 tsconfig。为什么不放进主 tsconfig：@cloudflare/workers-types 会全局定义 fetch/Response 等，与浏览器的 DOM 类型冲突（实测会让 src 下十余个无关文件报 ts 错误）。Cloudflare 构建时会自己处理这里的类型。",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ESNext"
+    ],
+    "types": [
+      "@cloudflare/workers-types"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "./**/*.ts"
+  ]
+}
