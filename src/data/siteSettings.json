@@ -5,8 +5,16 @@
 	"theme": "dark",
 	"hue": 165,
 	"wallpaperMode": "overlay",
+	"fullscreenLayout": "hero",
 	"postListLayout": "grid",
-	"overlayOpacity": 0.8,
+	"overlayOpacity": 1,
 	"overlayBlur": 10,
-	"overlayCardOpacity": 0.28
+	"overlayCardOpacity": 0.2,
+	"wavesEnabled": true,
+	"gradientEnabled": true,
+	"sakuraEnabled": false,
+	"bannerTitleEnabled": true,
+	"bannerCarouselEnabled": false,
+	"cardBorderEnabled": true,
+	"cardFollowThemeEnabled": true
 }
