@@ -112,8 +112,8 @@ export const siteConfig: SiteConfig = {
 	// 如果启用了OpenGraph图片功能，数组中需要包含png格式的favicon图标
 	favicon: [
 		{
-			// 图标文件路径
-			src: "/favicon/firefly-32.png",
+			// 图标文件路径（头像版，由 public/favicon/brand-*.png 生成）
+			src: "/favicon/brand-32.png",
 			// 可选，指定主题 'light' | 'dark'
 			// theme: "light",
 			// 可选，图标大小
