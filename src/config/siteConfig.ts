@@ -2,6 +2,7 @@ import siteAppearanceRaw from "@/data/siteAppearance.json";
 import type { SiteConfig } from "@/types/siteConfig";
 import { resolvePageToggles } from "../utils/page-toggle-utils";
 import { resolveSiteLang } from "../utils/site-config-utils";
+import { siteSettings } from "@/utils/site-settings";
 
 // ⚠️ 防御性读取，不要直接写 siteAppearanceRaw.title 之类的链式访问。
 // 原因：Pages CMS 保存时会**丢掉空值字段**。任何一项被清空（例如副标题留空、
@@ -89,9 +90,9 @@ export const siteConfig: SiteConfig = {
 	// 主题色
 	themeColor: {
 		// 主题色的默认色相，范围从 0 到 360。例如：红色：0，青色：200，蓝绿色：250，粉色：345
-		hue: 165,
+		hue: siteSettings.hue,
 		// 默认模式："light" 亮色，"dark" 暗色，"system" 跟随系统
-		defaultMode: "dark",
+		defaultMode: siteSettings.theme as "light" | "dark" | "system",
 	},
 
 	// 页面整体宽度（单位：rem）
@@ -102,9 +103,9 @@ export const siteConfig: SiteConfig = {
 	// 网站Card样式配置
 	card: {
 		// 是否开启卡片边框和阴影，开启后让网站更有立体感
-		border: false,
+		border: siteSettings.cardBorderEnabled,
 		// 是否让卡片风格跟随主题色相
-		followTheme: false,
+		followTheme: siteSettings.cardFollowThemeEnabled,
 	},
 
 	// Favicon 配置
@@ -181,7 +182,7 @@ export const siteConfig: SiteConfig = {
 	// ── 文章列表布局配置 ──────────────────────────────────
 	postListLayout: {
 		// 默认布局模式："list" 列表模式（单列布局），"grid" 网格模式（多列布局）
-		defaultMode: "grid",
+		defaultMode: siteSettings.postListLayout as "list" | "grid",
 		// 移动端默认布局模式，不设置则跟随 defaultMode
 		mobileDefaultMode: "grid",
 		// 列表模式下封面图显示在哪一侧："right" 右侧，"left" 左侧

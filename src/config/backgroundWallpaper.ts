@@ -1,6 +1,7 @@
 import type { BackgroundWallpaperConfig } from "@/types/backgroundWallpaper";
 import wallpapersRaw from "@/data/wallpapers.json";
 import socialLinksRaw from "@/data/socialLinks.json";
+import { siteSettings } from "@/utils/site-settings";
 
 // ⚠️ 防御性读取：Pages CMS 保存时会丢掉空值字段（例如把所有背景视频都删掉时，
 // videos 这个键会从 JSON 里消失）。键一旦消失，TypeScript 从 JSON 推断的类型就变了，
@@ -32,7 +33,8 @@ const toSrcPath = (list: unknown): string[] =>
 
 export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	// 壁纸模式："banner" 横幅壁纸，"fullscreen" 全屏壁纸，"overlay" 覆盖透明，"none" 纯色背景无壁纸
-	mode: "banner",
+	// 值来自 src/data/siteSettings.json（设置面板「保存为全站默认」写入）
+	mode: siteSettings.wallpaperMode as "banner" | "fullscreen" | "overlay" | "none",
 	// 是否启用背景视频播放，配置后将在导航栏显示视频播放按钮
 	playerEnable: true,
 	// 进入页面就自动播放，不用点导航栏那个按钮（静音播放，符合浏览器自动播放策略）
@@ -191,9 +193,9 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 层级，确保壁纸在背景层
 		zIndex: -1,
 		// 壁纸透明度
-		opacity: 0.8,
+		opacity: siteSettings.overlayOpacity,
 		// 背景模糊度
-		blur: 10,
+		blur: siteSettings.overlayBlur,
 		// 卡片透明度，0-1之间，值越小越透明
 		// 站长要求「融入壁纸」—— 一路从主题默认的 0.6 降到 0.35，仍觉得不够透，
 		// 最后定在 0.28（0.12 试过，站长反馈过头了）。
@@ -201,7 +203,7 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// （见 src/styles/card-blend.css），保证在亮/暗壁纸上都读得清。
 		// 访客仍可在设置面板里拖「卡片透明度」滑块临时调整；注意滑块调过之后
 		// 会存进浏览器 localStorage，会盖住这里的默认值（想回到新默认需把滑块拖回去）。
-		cardOpacity: 0.28,
+		cardOpacity: siteSettings.overlayCardOpacity,
 	},
 	// 全屏壁纸模式特有配置
 	// 壁纸模糊度(blur)、卡片透明度(cardOpacity)、层级(zIndex) 复用上方 overlay 模式的配置；

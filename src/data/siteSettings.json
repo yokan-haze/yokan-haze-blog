@@ -1,7 +1,12 @@
 {
-	"_说明": "全站默认外观。这里写什么，所有访客看到的就是什么。站内设置面板点「保存为全站默认」会通过 /api/settings 接口提交并覆盖这里。",
-	"_当前值": "2026-10-17 由代码固化：暗色 + 网格布局 + 卡片透明度 0.28",
-	"themeMode": "dark",
-	"postLayout": "grid",
-	"cardOpacity": 0.28
+	"_说明": "全站默认外观。这里写什么，所有访客看到的就是什么。站内的设置保存后台 /admin/ 点「保存为全站默认」后，接口会合并写回这里并触发重新构建。",
+	"_键名说明": "键名必须和主题 localStorage 的键完全一致（见 src/utils/setting-utils.ts），否则不会生效。可用的键：theme / hue / wallpaperMode / fullscreenLayout / postListLayout / overlayOpacity / overlayBlur / overlayCardOpacity / wavesEnabled / gradientEnabled / sakuraEnabled / bannerTitleEnabled / bannerCarouselEnabled / cardBorderEnabled / cardFollowThemeEnabled",
+	"_当前值": "2026-10-17 站长确认过的样子：暗色 + 网格布局 + 卡片透明度 0.28",
+	"theme": "dark",
+	"hue": 165,
+	"wallpaperMode": "banner",
+	"postListLayout": "grid",
+	"overlayOpacity": 0.8,
+	"overlayBlur": 10,
+	"overlayCardOpacity": 0.28
 }
