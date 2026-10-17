@@ -31,18 +31,47 @@ const MAX_BODY_BYTES = 16 * 1024; // 设置就几十字节，给 16KB 已经很�
 const DEFAULT_REPO = "yokan-haze/yokan-haze-blog";
 const DEFAULT_BRANCH = "main";
 
-// 允许出现在设置里的键。白名单的目的：万一令牌泄漏，也不能拿这个接口
-// 往仓库里写任意文件 / 任意内容。
+// 允许出现的设置键 —— 取自主题真实使用的 localStorage 键（见 src/utils/setting-utils.ts）。
+// 一开始我按猜测写过 themeMode / postLayout 之类的名字，那是错的：主题实际用的是
+// theme / postListLayout。白名单之外的一律丢弃，所以名字必须和主题完全一致。
+//
+// 白名单的目的：万一令牌泄漏，也不能拿这个接口往仓库里写任意文件 / 任意内容。
 const ALLOWED_KEYS = new Set([
-	"themeMode",
-	"wallpaperMode",
-	"cardOpacity",
-	"postLayout",
-	"bannerTitle",
-	"sakura",
-	"waves",
-	"navbarTransparent",
+	"theme", // "light" | "dark"
+	"hue", // 主题色相，0-360
+	"wallpaperMode", // "banner" | "fullscreen" | "overlay" | "none"
+	"fullscreenLayout", // 全屏壁纸布局
+	"postListLayout", // "list" | "grid"
+	"overlayOpacity", // 0-1
+	"overlayBlur", // 0-20
+	"overlayCardOpacity", // 0-1
+	"wavesEnabled",
+	"gradientEnabled",
+	"sakuraEnabled",
+	"bannerTitleEnabled",
+	"bannerCarouselEnabled",
+	"cardBorderEnabled",
+	"cardFollowThemeEnabled",
 ]);
+
+// 每个键允许的值类型。类型不符的直接丢弃，不写进仓库。
+const KEY_TYPES: Record<string, "boolean" | "number" | "string"> = {
+	theme: "string",
+	hue: "number",
+	wallpaperMode: "string",
+	fullscreenLayout: "string",
+	postListLayout: "string",
+	overlayOpacity: "number",
+	overlayBlur: "number",
+	overlayCardOpacity: "number",
+	wavesEnabled: "boolean",
+	gradientEnabled: "boolean",
+	sakuraEnabled: "boolean",
+	bannerTitleEnabled: "boolean",
+	bannerCarouselEnabled: "boolean",
+	cardBorderEnabled: "boolean",
+	cardFollowThemeEnabled: "boolean",
+};
 
 function json(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {
@@ -69,10 +98,22 @@ function sanitize(input: unknown): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
 		if (!ALLOWED_KEYS.has(k)) continue;
-		// 只允许布尔 / 数字 / 短字符串，别的一律拒绝
-		if (typeof v === "boolean") out[k] = v;
-		else if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
-		else if (typeof v === "string" && v.length <= 64) out[k] = v;
+
+		// 类型必须和该键预期的类型一致；不一致就丢弃（不做隐式转换，
+		// 避免 "true" 这种字符串被当成布尔值写进配置）。
+		const want = KEY_TYPES[k];
+		if (want === "boolean" && typeof v === "boolean") {
+			out[k] = v;
+			continue;
+		}
+		if (want === "number" && typeof v === "number" && Number.isFinite(v)) {
+			out[k] = v;
+			continue;
+		}
+		if (want === "string" && typeof v === "string" && v.length <= 64) {
+			out[k] = v;
+			continue;
+		}
 	}
 	return out;
 }

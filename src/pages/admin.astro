@@ -1,0 +1,179 @@
+---
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+
+// 站长的设置保存后台（/admin/）
+//
+// 用途：把「我在本机设置面板里调好的样子」提交成全站默认值。
+// 流程：读本机 localStorage 里主题的 15 个设置键 → 带上密码 POST /api/settings
+//       → 接口写回仓库 → 自动重新构建 → 所有访客都变成这个样子。
+//
+// 安全：密码只保存在**你自己浏览器的 localStorage** 里，只随请求头发给本站的
+// /api/settings，不写进代码、不进日志、也不经过任何第三方。
+// 这个页面没有加进导航栏，也没有对外链接，并且带 noindex。
+
+const KEYS = [
+	"theme",
+	"hue",
+	"wallpaperMode",
+	"fullscreenLayout",
+	"postListLayout",
+	"overlayOpacity",
+	"overlayBlur",
+	"overlayCardOpacity",
+	"wavesEnabled",
+	"gradientEnabled",
+	"sakuraEnabled",
+	"bannerTitleEnabled",
+	"bannerCarouselEnabled",
+	"cardBorderEnabled",
+	"cardFollowThemeEnabled",
+];
+---
+
+<MainGridLayout title="设置后台" description="把当前外观保存为全站默认。">
+  <div class="card-base p-5 mb-4">
+    <div class="text-2xl font-bold text-90 mb-1">设置保存后台</div>
+    <div class="text-sm text-75">
+      把「你现在看到的样子」保存成全站默认。保存后约 1 分钟生效，所有人打开都是这个样子。
+    </div>
+  </div>
+
+  <div class="card-base p-5 mb-4">
+    <div class="text-lg font-bold text-90 mb-2">第一步 · 输入保存密码</div>
+    <div class="text-xs text-75 mb-3">
+      就是 Cloudflare 环境变量 ADMIN_PASSWORD 里填的那个。只存在这台浏览器里。
+    </div>
+    <div class="flex gap-2 items-center flex-wrap">
+      <input
+        id="pw"
+        type="password"
+        placeholder="ADMIN_PASSWORD"
+        class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm w-64"
+      />
+      <button id="savePw" class="btn-regular rounded-lg px-4 py-2 text-sm">记住密码</button>
+      <span id="pwState" class="text-xs text-75"></span>
+    </div>
+  </div>
+
+  <div class="card-base p-5 mb-4">
+    <div class="text-lg font-bold text-90 mb-2">第二步 · 读取你现在的外观</div>
+    <div class="text-xs text-75 mb-3">
+      从这台浏览器的设置里读出当前值。没在设置面板调过的项不会出现。
+    </div>
+    <button id="read" class="btn-regular rounded-lg px-4 py-2 text-sm">读取本机设置</button>
+    <div id="list" class="mt-3 text-sm"></div>
+  </div>
+
+  <div class="card-base p-5">
+    <div class="text-lg font-bold text-90 mb-2">第三步 · 保存为全站默认</div>
+    <div class="text-xs text-75 mb-3">
+      提交到仓库并触发重新构建。构建期间站点仍可正常访问。
+    </div>
+    <button id="push" class="btn-regular rounded-lg px-4 py-2 text-sm">保存为全站默认</button>
+    <div id="out" class="mt-3 text-sm"></div>
+  </div>
+</MainGridLayout>
+
+<script is:inline define:vars={{ KEYS }}>
+  (function () {
+    var PW_KEY = "adminPassword";
+
+    var pwEl = document.getElementById("pw");
+    var pwState = document.getElementById("pwState");
+    var listEl = document.getElementById("list");
+    var outEl = document.getElementById("out");
+
+    function showPwState() {
+      var v = localStorage.getItem(PW_KEY);
+      pwState.textContent = v ? "✓ 已记住（长度 " + v.length + "）" : "尚未记住";
+      if (v) pwEl.value = v;
+    }
+
+    document.getElementById("savePw").addEventListener("click", function () {
+      var v = pwEl.value.trim();
+      if (!v) { pwState.textContent = "请先填密码"; return; }
+      localStorage.setItem(PW_KEY, v);
+      showPwState();
+    });
+
+    // 主题把布尔存成 "true"/"false"、数字存成字符串，这里还原成真实类型，
+    // 否则接口的白名单会因为类型不符把值丢掉。
+    function readLocal() {
+      var out = {};
+      for (var i = 0; i < KEYS.length; i++) {
+        var k = KEYS[i];
+        var raw = localStorage.getItem(k);
+        if (raw === null) continue;
+        if (raw === "true") out[k] = true;
+        else if (raw === "false") out[k] = false;
+        else if (raw !== "" && !isNaN(Number(raw))) out[k] = Number(raw);
+        else out[k] = raw;
+      }
+      return out;
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function render(obj) {
+      var keys = Object.keys(obj);
+      if (!keys.length) {
+        listEl.textContent = "这台浏览器里没找到任何设置 —— 先去设置面板调一下，再回来点这里。";
+        return;
+      }
+      var html = "<table class='w-full text-sm'>";
+      for (var i = 0; i < keys.length; i++) {
+        html += "<tr><td class='py-1 pr-4 text-75'>" + esc(keys[i]) +
+          "</td><td class='py-1 text-90 font-medium'>" + esc(obj[keys[i]]) + "</td></tr>";
+      }
+      html += "</table>";
+      listEl.innerHTML = html;
+    }
+
+    var lastRead = null;
+
+    document.getElementById("read").addEventListener("click", function () {
+      lastRead = readLocal();
+      render(lastRead);
+    });
+
+    document.getElementById("push").addEventListener("click", function () {
+      var pw = pwEl.value.trim();
+      if (!pw) { outEl.textContent = "先在上面输入并记住密码"; return; }
+      var data = lastRead || readLocal();
+      if (!Object.keys(data).length) {
+        outEl.textContent = "没有可保存的设置，先点「读取本机设置」";
+        return;
+      }
+
+      outEl.textContent = "提交中……";
+      fetch("/api/settings", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-admin-password": pw },
+        body: JSON.stringify({ settings: data }),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) { return { status: r.status, body: j }; });
+        })
+        .then(function (res) {
+          if (res.body && res.body.ok) {
+            outEl.textContent =
+              "✓ 已保存 " + Object.keys(res.body.saved || {}).length +
+              " 项。约 1 分钟后重新构建完成，届时所有人看到的都是这个样子。";
+          } else {
+            outEl.textContent =
+              "✗ 失败（HTTP " + res.status + "）：" +
+              ((res.body && res.body.error) || "未知错误");
+          }
+        })
+        .catch(function (e) {
+          outEl.textContent = "✗ 请求出错：" + e;
+        });
+    });
+
+    showPwState();
+  })();
+</script>
