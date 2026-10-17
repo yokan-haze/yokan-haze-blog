@@ -1,0 +1,131 @@
+---
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+
+// 文章编辑器（/admin/edit/）—— 站内后台第一轮
+//
+// 能做的事：写一篇新文章 / 编辑已有文章，点发布后由 /api/content 提交进仓库，
+// 约 1 分钟后自动重新构建上线。
+//
+// 安全：密码复用 /admin/ 那套（同一个 localStorage 键），只发给本站接口。
+
+const TYPES = [
+	{ key: "posts", label: "文章" },
+	{ key: "dynamic", label: "动态（随笔）" },
+	{ key: "projects", label: "项目" },
+];
+---
+
+<MainGridLayout title="写文章" description="站内编辑">
+  <div class="card-base p-5 mb-4">
+    <div class="text-2xl font-bold text-90 mb-1">写文章</div>
+    <div class="text-sm text-75">
+      发布后约 1 分钟自动上线。密码和 <a href="/admin/" class="text-(--primary)">/admin/</a> 共用。
+    </div>
+  </div>
+
+  <div class="card-base p-5 mb-4">
+    <div class="grid gap-3">
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-75 w-16">类型</label>
+        <select id="type" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm">
+          {TYPES.map((t) => <option value={t.key}>{t.label}</option>)}
+        </select>
+        <input
+          id="filename"
+          type="text"
+          placeholder="文件名（留空自动生成；编辑旧文章时填原文件名）"
+          class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm flex-1 min-w-64"
+        />
+      </div>
+
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-75 w-16">标题</label>
+        <input id="title" type="text" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm flex-1" />
+      </div>
+
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-75 w-16">简介</label>
+        <input id="description" type="text" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm flex-1" />
+      </div>
+
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-75 w-16">标签</label>
+        <input id="tags" type="text" placeholder="用逗号分隔，例如：随笔, 建站" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm flex-1" />
+      </div>
+
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-75 w-16">分类</label>
+        <input id="category" type="text" placeholder="例如：随笔" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm flex-1" />
+        <label class="text-sm text-75 flex items-center gap-1">
+          <input id="draft" type="checkbox" />
+          存为草稿
+        </label>
+      </div>
+
+      <div class="flex gap-2 items-start">
+        <label class="text-sm text-75 w-16 pt-2">正文</label>
+        <textarea
+          id="body"
+          rows="18"
+          placeholder="# 标题&#10;&#10;正文用 Markdown 写。"
+          class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm flex-1 font-mono leading-6"
+        ></textarea>
+      </div>
+
+      <div class="flex gap-2 items-center flex-wrap pt-2">
+        <input id="pw" type="password" placeholder="后台密码" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm w-56" />
+        <button id="go" class="btn-regular rounded-lg px-5 py-2 text-sm">发布</button>
+        <span id="out" class="text-sm"></span>
+      </div>
+    </div>
+  </div>
+</MainGridLayout>
+
+<script is:inline>
+  (function () {
+    var PW_KEY = "adminPassword";
+    var pw = document.getElementById("pw");
+    var out = document.getElementById("out");
+
+    var saved = localStorage.getItem(PW_KEY);
+    if (saved) pw.value = saved;
+
+    document.getElementById("go").addEventListener("click", function () {
+      var password = pw.value.trim();
+      if (!password) { out.textContent = "先填密码"; return; }
+      localStorage.setItem(PW_KEY, password);
+
+      var type = document.getElementById("type").value;
+      var title = document.getElementById("title").value.trim();
+      var description = document.getElementById("description").value.trim();
+      var tagsRaw = document.getElementById("tags").value.trim();
+      var category = document.getElementById("category").value.trim();
+      var draft = document.getElementById("draft").checked;
+      var body = document.getElementById("body").value;
+      var filename = document.getElementById("filename").value.trim();
+
+      if (type !== "dynamic" && !title) { out.textContent = "标题不能为空"; return; }
+
+      var tags = tagsRaw ? tagsRaw.split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
+
+      var data = { title: title, description: description, tags: tags, category: category, draft: draft };
+      if (type === "dynamic") data = { draft: draft };
+
+      out.textContent = "提交中……";
+      fetch("/api/content", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-admin-password": password },
+        body: JSON.stringify({ type: type, filename: filename || undefined, data: data, body: body }),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+        .then(function (res) {
+          if (res.j && res.j.ok) {
+            out.textContent = "✓ " + (res.j.updated ? "已更新" : "已发布") + "：" + res.j.filename + " —— 约 1 分钟后上线";
+          } else {
+            out.textContent = "✗ " + ((res.j && res.j.error) || ("HTTP " + res.s));
+          }
+        })
+        .catch(function (e) { out.textContent = "✗ 请求失败：" + e; });
+    });
+  })();
+</script>
