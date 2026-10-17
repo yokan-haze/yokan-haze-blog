@@ -113,7 +113,7 @@ export const siteConfig: SiteConfig = {
 	favicon: [
 		{
 			// 图标文件路径（头像版，由 public/favicon/brand-*.png 生成）
-			src: "/favicon/brand-32.png",
+			src: "/favicon/firefly-32.png",
 			// 可选，指定主题 'light' | 'dark'
 			// theme: "light",
 			// 可选，图标大小
