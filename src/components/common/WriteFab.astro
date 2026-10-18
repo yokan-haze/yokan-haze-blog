@@ -1,0 +1,49 @@
+---
+// 写作入口浮动按钮
+//
+// 站长反馈：站内发布文章的页面（/admin/edit/）在站上找不到入口。
+// 这个按钮固定悬浮在页面右下角，样式借鉴 QQ / 微信的「发布」悬浮按钮。
+//
+// 关于「别人会不会看到」：站长明确表示他有自己的安排，不用担心，
+// 所以这里不再做隐藏逻辑。真正的保护是接口的密码（没有密码发不了文章）。
+---
+
+<a
+  id="write-fab"
+  href="/admin/edit/"
+  aria-label="写文章"
+  title="写文章"
+  class="fixed z-40 flex items-center gap-2 rounded-full shadow-lg transition-transform duration-200 hover:scale-105"
+>
+  <span class="material-symbols:edit-document text-xl"></span>
+  <span class="write-fab-label text-sm font-medium">写文章</span>
+</a>
+
+<style>
+  /* 放在右下角，但要避开主题自带的设置齿轮（它也在右下角），
+     所以整体上移一段。移动端缩小成只有图标。 */
+  #write-fab {
+    right: 1.25rem;
+    bottom: 6.5rem;
+    padding: 0.7rem 1.1rem;
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  }
+
+  #write-fab:hover {
+    color: #fff;
+  }
+
+  @media (max-width: 767px) {
+    #write-fab {
+      right: 0.9rem;
+      bottom: 5.5rem;
+      padding: 0.75rem;
+    }
+
+    .write-fab-label {
+      display: none;
+    }
+  }
+</style>
