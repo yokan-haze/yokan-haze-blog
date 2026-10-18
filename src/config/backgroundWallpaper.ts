@@ -189,7 +189,7 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 首页内容顶部留白。主题默认是 5.5rem（内容紧贴导航栏，壁纸全被压在内容下面，看不见）
 		// 想让壁纸在顶部露出来一块，就把它调大：60vh ≈ 屏幕高度的 60%
 		// 可自行改成 "40vh" / "50vh" / "500px" 等；改完推送后约 1 分钟自动生效
-		contentTop: "60vh",
+		contentTop: "38vh",
 		// 层级，确保壁纸在背景层
 		zIndex: -1,
 		// 壁纸透明度
