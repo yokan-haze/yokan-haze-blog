@@ -77,6 +77,7 @@ const TYPES = [
       <div class="flex gap-2 items-center flex-wrap pt-2">
         <input id="pw" type="password" placeholder="后台密码" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm w-56" />
         <button id="go" class="btn-regular rounded-lg px-5 py-2 text-sm">发布</button>
+        <button id="reload" class="btn-regular rounded-lg px-4 py-2 text-sm">读取内容</button>
         <span id="out" class="text-sm"></span>
       </div>
     </div>
@@ -130,8 +131,13 @@ const TYPES = [
         .catch(function (e) { out.textContent = "✗ 请求失败：" + e; });
     });
 
-    // ── 修改已有文章：URL 带 ?file= 时自动读回并填表 ──
-    (function tryLoadExisting() {
+    // ── 修改已有文章：URL 带 ?file= 时读回并把内容填进表单 ──
+    // 之前的实现有个致命缺陷：只有 localStorage 里已存密码才会去读，
+    // 而密码只在「点发布」时才保存 —— 所以第一次进来表单永远是空的
+    // （站长反馈「点击编辑文章为什么没有字」）。现在改成：
+    //   · 进了带 ?file= 的页面就调用一次
+    //   · 没有密码时提示，并可点「读取内容」按钮用输入框里的密码再试
+    var loadExisting = (function tryLoadExisting() {
       var file = new URLSearchParams(location.search).get("file");
       var state = document.getElementById("loadState");
       if (!file || !state) return;
@@ -142,11 +148,12 @@ const TYPES = [
       else if (file.indexOf("/projects/") >= 0) document.getElementById("type").value = "projects";
       else document.getElementById("type").value = "posts";
 
-      var password = localStorage.getItem(PW_KEY);
+      var password = (document.getElementById("pw").value || "").trim() || localStorage.getItem(PW_KEY) || "";
       if (!password) {
-        state.textContent = "要修改的是 " + file + " —— 先在下面填密码并点发布区任意处，再刷新本页即可读出内容";
+        state.textContent = "要修改的是 " + file + " —— 请在下方填入密码，然后点「读取内容」";
         return;
       }
+      localStorage.setItem(PW_KEY, password);
 
       state.textContent = "正在读取 " + file + " ……";
       fetch("/api/file?path=" + encodeURIComponent(file), {
@@ -169,5 +176,17 @@ const TYPES = [
         })
         .catch(function (e) { state.textContent = "读取失败：" + e; });
     })();
+
+    var reloadBtn = document.getElementById("reload");
+    if (reloadBtn) {
+      reloadBtn.addEventListener("click", function () {
+        var file = new URLSearchParams(location.search).get("file");
+        if (!file) {
+          document.getElementById("loadState").textContent = "当前没有指定要修改的文章（URL 里没有 ?file=），这里只能新建。";
+          return;
+        }
+        loadExisting();
+      });
+    }
   })();
 </script>
