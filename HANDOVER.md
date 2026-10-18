@@ -66,13 +66,20 @@
 - **必须知道的两个坑**（都实测踩到了）：
   1. `#content-wrapper` 带 `.onload-animation`（`animation: fade-in-up ... forwards`），
      动画结束后 `transform` 是 `translateY(0)` 而不是 `none` → **会成为 `position: fixed` 的包含块**，
-     按钮直接跑到屏幕外（实测 `bottom: -1037px`）。所以初始化时把整个
-     `#post-edit-root` **搬到 `document.body`**；换页时由 `cleanupStaleEditors()` 清理旧节点。
+     按钮直接跑到屏幕外（实测 `bottom: -1037px`）。所以初始化时把整个 `#post-edit-root`
+     **搬进主题的浮动控件列**（`.floating-controls-container`，见下面「按钮位置」）。
   2. 一次软导航里 `astro:page-load` 和 `swup:page:view` **都会来**，清理函数被调用两次；
-     不能无脑删 body 下所有节点，否则会把刚搬出来的按钮自己删掉（第一版就这么翻车了）。
-     现在的判定：容器里有新 SSR 节点就全删旧；否则按 `data-admin-url` 比对 URL。
-- 按钮位置：`right: 5.5rem; bottom: 10.2rem`（和「写文章」同一列、让开主题自带的圆形浮动控件，
-  间距 24px；移动端 `right: 4.5rem`，保留「编辑」文字以便和纯图标的「写文章」区分）。
+     不能无脑删所有搬出来的节点，否则会把刚搬出来的按钮自己删掉（第一版就这么翻车了）。
+     现在的判定：`#swup-container` 里有新 SSR 节点就全删旧；否则按 `data-admin-url` 比对 URL。
+- 按钮位置（2026-10-18 晚，站长追加：「把编辑改到和他们一起，这样更好看」）：
+  不再是自己做的绿色胶囊，而是**直接复用主题的 `<FloatingButton>`**（同样的 3rem 圆角玻璃块、
+  同样的主题色图标、同样的 8px 间距），初始化时插进 `.floating-controls-container` 的**第一位** ——
+  也就是右下角「目录 / 沉浸阅读 / 回首页」那一列的最上面，与它们完全同款同列。
+  那一列自带响应式（≤480px 变 2.5rem），移动端自动跟随。
+  注意：那一列是 `pointer-events: none`（`pointer-events` 会继承），所以面板与遮罩
+  必须显式写 `pointer-events: auto`，否则弹层点不动。
+- 「写文章」胶囊保持原样（绿色、带文字、显眼），位置改成 `right: 6.5rem; bottom: 6.5rem`，
+  留 30px 让开那一列（移动端 `right: 4.5rem`）。
 
 ### 4. 编辑器标题字号 → 已确认到位（并顺手修了两个小问题）
 

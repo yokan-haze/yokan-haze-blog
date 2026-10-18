@@ -442,17 +442,22 @@ function initPostInlineEditor(): void {
 	if (!fab || fab.dataset.adminBound === "1") return;
 	fab.dataset.adminBound = "1";
 
-	// 把整个「按钮 + 弹层」搬到 <body> 底下。
+	// 把「按钮 + 弹层」搬到主题自带的浮动控件列里（右下角那一列圆角按钮）。
 	//
-	// 为什么必须搬：#content-wrapper 带 .onload-animation（animation: fade-in-up
-	// ... forwards），动画结束后 transform 仍是 translateY(0) 而不是 none ——
-	// 非 none 的 transform 会成为 position: fixed 的包含块，按钮就会贴在文章
-	// 底部（实测 bottom: -1037px，等于跑到屏幕外）。搬到 body 后才是相对视口定位。
-	// 搬迁后的节点由 cleanupStaleEditors() 在每次换页时清掉，不会越积越多。
+	// 两件事一起解决：
+	//  1) 站长要求「编辑」和目录/评论/回到顶部那一列同款 → 直接插进
+	//     .floating-controls-container（flex column、右对齐、自动堆叠、间距一致）
+	//  2) #content-wrapper 带 .onload-animation（animation: fade-in-up … forwards），
+	//     动画结束后 transform 仍是 translateY(0) 而不是 none —— 非 none 的 transform
+	//     会成为 position: fixed 的包含块，弹层就会按整篇文章的高度定位（实测跑到
+	//     屏幕外 bottom: -1037px）。挂到这一列下面就脱离了那个包含块。
+	// 换页时由 cleanupStaleEditors() 清理旧节点，不会越积越多。
 	const root = byId<HTMLElement>("post-edit-root");
-	if (root && root.parentElement !== document.body) {
+	if (root && !root.closest(".floating-controls-container") && root.parentElement !== document.body) {
 		root.dataset.adminUrl = location.pathname + location.search;
-		document.body.appendChild(root);
+		const controls = document.querySelector<HTMLElement>(".floating-controls-container");
+		if (controls) controls.insertBefore(root, controls.firstChild);
+		else document.body.appendChild(root);
 	}
 
 	const panel = byId("post-edit-panel");
@@ -617,19 +622,22 @@ function initPostInlineEditor(): void {
 
 // 换页时清掉上一页搬出来的「就地编辑」节点（见 initPostInlineEditor 里的说明）。
 //
-// 判定规则（不能简单地「删掉 body 下所有的」）：
+// 判定规则（不能简单地「删掉容器下所有的」）：
 //   · 新页面如果是文章页，swup 容器里会有一份全新的 SSR 节点 → 旧的全删
 //   · 不是文章页（容器里没有那份节点）→ 按 URL 比对，URL 变了的旧节点就是上一页的
 //   · 同一次切换里本函数可能被调用两次（astro:page-load 与 swup:page:view 都会来），
 //     此时节点已经搬出来了、URL 又没变，必须留着，否则按钮会被自己删掉
 function cleanupStaleEditors(): void {
-	const portals = Array.from(document.querySelectorAll<HTMLElement>("body > [data-post-editor]"));
-	if (!portals.length) return;
+	// 只认「已经搬出去的」：还在 #swup-container 里的那份是新页面自带的，不能删
+	const moved = Array.from(document.querySelectorAll<HTMLElement>("[data-post-editor]")).filter(
+		(el) => !el.closest("#swup-container"),
+	);
+	if (!moved.length) return;
 
 	const fresh = document.querySelector<HTMLElement>("#swup-container [data-post-editor]");
 	const currentUrl = location.pathname + location.search;
 
-	for (const portal of portals) {
+	for (const portal of moved) {
 		const ownerUrl = portal.getAttribute("data-admin-url") ?? "";
 		if (fresh || ownerUrl !== currentUrl) portal.remove();
 	}

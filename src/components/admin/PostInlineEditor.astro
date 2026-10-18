@@ -1,11 +1,19 @@
 ---
+import FloatingButton from "@/components/common/FloatingButton.astro";
+
 // 文章详情页右下角的「编辑」按钮 —— 点了就地改这一篇，不跳页。
 //
 // 站长的原话：不要跳到 /admin/edit/ 去改，就在文章页面里改。
 // 所以这里是一个悬浮按钮 + 就地弹层：读原文、改、保存，全程不离开这篇文章。
 //
+// 站长 2026-10-18 晚追加：「把编辑改到和他们一起，这样更好看」——
+// 也就是和主题自带的那一列浮动控件（目录 / 评论 / 回到顶部）同款、同一列。
+// 所以按钮不再是绿色胶囊，而是直接复用 <FloatingButton>（同样的 3rem 圆角玻璃块、
+// 同样的主题色图标）；位置由 admin-init.ts 在初始化时把整个节点插进
+// .floating-controls-container 的第一位（那一列是 flex column、右对齐、自动堆叠）。
+//
 // 真正的写盘由 /api/content 完成（提交进 Git 仓库 → 自动构建 → 约 1 分钟后上线）。
-// 交互逻辑在同目录的 src/utils/admin-init.ts 里（initPostInlineEditor）：
+// 交互逻辑在 src/utils/admin-init.ts 里（initPostInlineEditor）：
 // 主题用 Swup 做软导航，写在这个组件里的 is:inline 脚本换页后不会重跑，
 // 因此统一放到 Layout 的打包脚本里，靠 astro:page-load 重新绑定。
 //
@@ -21,26 +29,18 @@ interface Props {
 
 const { filePath, title } = Astro.props;
 const filename = filePath.split("/").pop() ?? "";
+const tip = `编辑《${title}》`;
 ---
 
 <div id="post-edit-root" data-post-editor data-file-path={filePath}>
-  <button
-    id="post-edit-fab"
-    type="button"
-    class="post-edit-fab"
-    data-file-path={filePath}
-    data-filename={filename}
-    title={`编辑《${title}》`}
-    aria-label="编辑这篇文章"
-  >
-    <span class="post-edit-icon" aria-hidden="true">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 20h9"></path>
-        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-      </svg>
-    </span>
-    <span class="post-edit-fab-label">编辑</span>
-  </button>
+  <div id="post-edit-fab" class="post-edit-fab" data-file-path={filePath} data-filename={filename}>
+    <FloatingButton
+      id="post-edit-fab-btn"
+      icon="material-symbols:edit-rounded"
+      title={tip}
+      ariaLabel="编辑这篇文章"
+    />
+  </div>
 
   <div id="post-edit-backdrop" class="post-edit-backdrop hidden"></div>
 
@@ -139,41 +139,22 @@ const filename = filePath.split("/").pop() ?? "";
 </div>
 
 <style>
-  /* 悬浮按钮：右下角。要避开主题自带的那一列浮动控件（right 约 1rem、
-     从 bottom 4rem 往上堆的圆形按钮），所以和「写文章」按钮一起往左让开一列，
-     再叠在它上面一格。 */
+  /* 按钮本体是主题的 <FloatingButton>（3rem 圆角玻璃块、主题色图标），
+     和目录/评论/回到顶部那一列完全同款；位置由 admin-init.ts 把整个节点
+     插进 .floating-controls-container 的第一位，间距/右对齐/响应式全部跟那一列走。
+     这里只需要保证包裹层不撑出额外的宽高。 */
   .post-edit-fab {
-    position: fixed;
-    z-index: 40;
-    right: 5.5rem;
-    bottom: 10.2rem;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.62rem 1rem;
-    border-radius: 9999px;
-    background: var(--primary);
-    color: #fff;
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-    transition: transform 0.2s ease;
+    display: block;
+    line-height: 0;
   }
 
-  .post-edit-fab:hover {
-    color: #fff;
-    transform: scale(1.05);
-  }
-
-  .post-edit-icon {
-    display: flex;
-  }
-
+  /* 面板与遮罩是 position: fixed，不参与那一列的 flex 布局；
+     但 pointer-events 会从 .floating-controls-container 继承 none，必须显式收回来。 */
   .post-edit-backdrop {
     position: fixed;
     inset: 0;
     z-index: 1200;
+    pointer-events: auto;
     background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(2px);
   }
@@ -188,6 +169,7 @@ const filename = filePath.split("/").pop() ?? "";
     max-height: 88vh;
     overflow-y: auto;
     padding: 1.25rem;
+    pointer-events: auto;
     /* 编辑面板要看清字：在主题卡片底色上再压一层，不让壁纸透过来影响阅读 */
     background-color: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(14px) saturate(1.15);
@@ -199,17 +181,6 @@ const filename = filePath.split("/").pop() ?? "";
   }
 
   @media (max-width: 767px) {
-    .post-edit-fab {
-      right: 4.5rem;
-      bottom: 9.4rem;
-      padding: 0.6rem 0.9rem;
-    }
-
-    /* 手机上保留文字：主题的「写文章」按钮是纯图标，两个都只剩铅笔会分不清 */
-    .post-edit-fab-label {
-      font-size: 0.8rem;
-    }
-
     .post-edit-panel {
       width: 96vw;
       max-height: 92vh;

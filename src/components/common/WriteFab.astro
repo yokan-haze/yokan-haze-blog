@@ -27,11 +27,10 @@ import { Icon } from "astro-icon/components";
 
 <style>
   /* 放在右下角，但要避开主题自带的浮动控件（它们也贴在右边，是
-     right:~1rem 起的一列圆形按钮）。所以和文章页的「编辑」按钮一起
-     往左让开一列，否则会有半个圆形按钮被压在下面、点不到。
-     移动端只有图标。 */
+     right:~1rem 起的一列方角按钮；文章页的「编辑」也进了那一列）。
+     所以「写文章」胶囊往左让开一列，并且留出 30px 呼吸位，别贴着那一列。 */
   #write-fab {
-    right: 5.5rem;
+    right: 6.5rem;
     bottom: 6.5rem;
     padding: 0.7rem 1.1rem;
     background: var(--primary);
