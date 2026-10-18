@@ -1,0 +1,125 @@
+---
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+
+// 内容列表（/admin/list/）—— 站内后台第二轮
+//
+// 列出仓库里已有的内容，支持删除。编辑功能下一轮做（需要先把正文读回来）。
+// 密码复用 /admin/ 那套 localStorage 键。
+
+const TYPES = [
+	{ key: "posts", label: "文章" },
+	{ key: "dynamic", label: "动态" },
+	{ key: "projects", label: "项目" },
+];
+---
+
+<MainGridLayout title="内容列表" description="站内管理">
+  <div class="card-base p-5 mb-4">
+    <div class="text-2xl font-bold text-90 mb-1">内容列表</div>
+    <div class="text-sm text-75">
+      点「删除」会真的从仓库删掉（Git 里有记录，能找回）。编辑功能下一轮做。
+    </div>
+  </div>
+
+  <div class="card-base p-5">
+    <div class="flex gap-2 items-center flex-wrap mb-4">
+      <select id="type" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm">
+        {TYPES.map((t) => <option value={t.key}>{t.label}</option>)}
+      </select>
+      <input id="pw" type="password" placeholder="后台密码" class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm w-56" />
+      <button id="load" class="btn-regular rounded-lg px-4 py-2 text-sm">刷新列表</button>
+      <span id="out" class="text-sm text-75"></span>
+    </div>
+    <div id="list" class="text-sm"></div>
+  </div>
+</MainGridLayout>
+
+<script is:inline>
+  (function () {
+    var PW_KEY = "adminPassword";
+    var pw = document.getElementById("pw");
+    var out = document.getElementById("out");
+    var listEl = document.getElementById("list");
+
+    var saved = localStorage.getItem(PW_KEY);
+    if (saved) pw.value = saved;
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function load() {
+      var password = pw.value.trim();
+      if (!password) { out.textContent = "先填密码"; return; }
+      localStorage.setItem(PW_KEY, password);
+
+      var type = document.getElementById("type").value;
+      out.textContent = "读取中……";
+
+      fetch("/api/content?type=" + encodeURIComponent(type), {
+        headers: { "x-admin-password": password },
+      })
+        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+        .then(function (res) {
+          if (!res.j || !res.j.ok) {
+            out.textContent = "✗ " + ((res.j && res.j.error) || ("HTTP " + res.s));
+            listEl.innerHTML = "";
+            return;
+          }
+          var files = res.j.files || [];
+          out.textContent = "共 " + files.length + " 个";
+          if (!files.length) { listEl.textContent = "这个类型下还没有内容。"; return; }
+
+          var html = "<table class='w-full'>";
+          for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            html +=
+              "<tr class='border-t border-(--line-divider)'>" +
+              "<td class='py-2 pr-4 text-90'>" + esc(f.name) + "</td>" +
+              "<td class='py-2 text-right'>" +
+              "<button data-path='" + esc(f.path) + "' class='del btn-regular rounded-lg px-3 py-1 text-xs'>删除</button>" +
+              "</td></tr>";
+          }
+          html += "</table>";
+          listEl.innerHTML = html;
+
+          var btns = listEl.querySelectorAll("button.del");
+          for (var k = 0; k < btns.length; k++) {
+            btns[k].addEventListener("click", function () {
+              var path = this.getAttribute("data-path");
+              if (!confirm("确定删除？\n" + path)) return;
+              var btn = this;
+              btn.disabled = true;
+              btn.textContent = "删除中…";
+              fetch("/api/delete", {
+                method: "POST",
+                headers: { "content-type": "application/json", "x-admin-password": pw.value.trim() },
+                body: JSON.stringify({ path: path }),
+              })
+                .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+                .then(function (r2) {
+                  if (r2.j && r2.j.ok) {
+                    out.textContent = "✓ 已删除 " + path + "，约 1 分钟后重新构建";
+                    load();
+                  } else {
+                    out.textContent = "✗ " + ((r2.j && r2.j.error) || ("HTTP " + r2.s));
+                    btn.disabled = false;
+                    btn.textContent = "删除";
+                  }
+                })
+                .catch(function (e) {
+                  out.textContent = "✗ 请求失败：" + e;
+                  btn.disabled = false;
+                  btn.textContent = "删除";
+                });
+            });
+          }
+        })
+        .catch(function (e) { out.textContent = "✗ 请求失败：" + e; });
+    }
+
+    document.getElementById("load").addEventListener("click", load);
+  })();
+</script>
