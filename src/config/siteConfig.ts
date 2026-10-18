@@ -206,7 +206,9 @@ export const siteConfig: SiteConfig = {
 			// 是否显示发布日期
 			showPublished: true,
 			// 是否显示分类
-			showCategory: true,
+			// 关掉的原因：分类在元信息行里会被挤到单独一行（站长反馈不好看），
+			// 而卡片底部的标签区已经显示了 #随笔，信息没丢。
+			showCategory: false,
 			// 是否显示标签
 			showTags: true,
 			// 标签数量，设为 0 则不限制
