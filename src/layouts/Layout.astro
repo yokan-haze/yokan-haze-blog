@@ -591,6 +591,12 @@ const contentTopCss = `:root{--cfg-overlay-content-top:${overlayContentTop};--cf
 
 
 <script>
+  import { initAdminUi } from "@/utils/admin-init";
   import { initLayout } from "@/utils/layout-init";
+
   initLayout();
+  // 后台（/admin/、/admin/list/、/admin/edit/）与文章页「就地编辑」的客户端逻辑。
+  // 必须放在打包脚本里：主题用 Swup 做软导航，页面里的 is:inline 脚本换页后
+  // 不会重跑，站长会遇到「后台页面必须刷新才有用」。详见 admin-init.ts 顶部。
+  initAdminUi();
 </script>

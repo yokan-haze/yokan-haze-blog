@@ -135,6 +135,7 @@ const viewConfigStr = JSON.stringify({
             isUserScrolling: false,
             scrollTimeout: null,
             currentLrcIndex: -1,
+            retryable: false,
             vs: {
                 playlist: [],
                 currentIndex: -1,
@@ -147,12 +148,22 @@ const viewConfigStr = JSON.stringify({
         };
 
         // ── UI update functions ──────────────────────────────────
+        // 只做视觉遮罩，不再动 pointer-events：加载期间卡片必须还能点
+        // （第三方歌单接口慢的时候，之前整张卡片是「点不动」的，看着像坏了）
         function setLoading(bool) {
-            if (bool) {
-                ui.loading.classList.remove('opacity-0', 'pointer-events-none');
-            } else {
-                ui.loading.classList.add('opacity-0', 'pointer-events-none');
-            }
+            if (bool) ui.loading.classList.remove('opacity-0');
+            else ui.loading.classList.add('opacity-0');
+        }
+
+        // 歌单加载失败时把标题变成「点此重试」。
+        // 文案直接写中文 —— 这个站点的界面语言就是中文。
+        var RETRY_TEXT = '歌单加载失败 · 点此重试';
+
+        function setRetryable(on, text) {
+            local.retryable = !!on;
+            ui.title.style.cursor = on ? 'pointer' : '';
+            ui.title.title = on ? '点击重新加载歌单' : '';
+            if (text) ui.title.innerText = text;
         }
 
         function updatePlayStateUI(isPlaying) {
@@ -490,6 +501,7 @@ const viewConfigStr = JSON.stringify({
 
             if (s.playlist.length === 0) {
                 ui.title.innerText = s.error || cfg.i18n.noSongs;
+                setRetryable(true, RETRY_TEXT);
                 return;
             }
 
@@ -532,11 +544,26 @@ const viewConfigStr = JSON.stringify({
             var d = e.detail;
             setLoading(false);
             if (d.playlist.length > 0) {
+                setRetryable(false);
                 renderPlaylist(d.playlist, 0);
                 updateModeUI(d.playMode);
                 updateVolumeUI(d.volume, d.isMuted);
             } else {
                 ui.title.innerText = cfg.i18n.noSongs;
+            }
+        });
+
+        // 加载中的提示：卡片不会因为第三方接口慢而空白/转圈到永远
+        on('fm:status', function (e) {
+            var status = (e.detail && e.detail.status) || '';
+            if (status === 'loading') {
+                setLoading(true);
+            } else if (status === 'ready' || status === 'stale') {
+                setLoading(false);
+                setRetryable(false);
+            } else if (status === 'error') {
+                setLoading(false);
+                setRetryable(true, RETRY_TEXT);
             }
         });
 
@@ -576,11 +603,29 @@ const viewConfigStr = JSON.stringify({
         });
 
         on('fm:error', function (e) {
-            ui.title.innerText = e.detail.message || cfg.i18n.error;
+            var msg = (e.detail && e.detail.message) || cfg.i18n.error;
+            setLoading(false);
+            setRetryable(true, msg + ' · 点此重试');
         });
 
         // ── Button click delegates ───────────────────────────────
-        ui.btnPlay.addEventListener('click', function () { mgr.togglePlay(); });
+        // 歌单还没就绪时点播放 = 重试加载（不再是「点了没反应」）
+        ui.btnPlay.addEventListener('click', function () {
+            var s = mgr.getState();
+            if (!s.playlist.length) {
+                setRetryable(false);
+                mgr.retry();
+                return;
+            }
+            mgr.togglePlay();
+        });
+
+        // 标题上的「点此重试」
+        ui.title.addEventListener('click', function () {
+            if (!local.retryable) return;
+            setRetryable(false);
+            mgr.retry();
+        });
         ui.btnNext.addEventListener('click', function () { mgr.playNext(); });
         ui.btnPrev.addEventListener('click', function () { mgr.playPrev(); });
         ui.btnRepeat.addEventListener('click', function () { mgr.cyclePlayMode(); });

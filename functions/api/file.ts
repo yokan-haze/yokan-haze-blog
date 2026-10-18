@@ -45,10 +45,15 @@ function b64ToUtf8(b64: string): string {
 	return new TextDecoder().decode(bytes);
 }
 
-// 极简 frontmatter 解析：只处理本项目用到的形态
-//   key: value          （字符串 / 未加引号的值）
+// frontmatter 解析：只处理本项目用到的形态，但要把「块状写法」也读对，
+// 否则编辑器会把已有的标签/多行字段读成空值，保存时就把它们抹掉了。
+//   key: value               （字符串 / 未加引号的值）
 //   key: "value"
-//   key: [a, b]         （数组）
+//   key: [a, b]              （行内数组）
+//   key:                     （块状数组）
+//     - a
+//     - b
+//   key: |  /  key: >        （多行标量）
 //   key: true / 123
 function parseFrontmatter(text: string): { data: Record<string, unknown>; body: string } {
 	if (!text.startsWith("---")) return { data: {}, body: text };
@@ -59,17 +64,64 @@ function parseFrontmatter(text: string): { data: Record<string, unknown>; body: 
 	const body = text.slice(end + 4).replace(/^\r?\n/, "");
 	const data: Record<string, unknown> = {};
 
-	for (const rawLine of head.split(/\r?\n/)) {
-		const line = rawLine.trimEnd();
-		if (!line || line.startsWith("#")) continue;
+	const unquote = (value: string): string => {
+		const v = value.trim();
+		if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+			return v.slice(1, -1);
+		}
+		return v;
+	};
+
+	const lines = head.split(/\r?\n/);
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		if (!line.trim() || line.trimStart().startsWith("#")) continue;
+		// 缩进行属于上一个键，已经在收集续行时处理掉了
+		if (/^\s/.test(line)) continue;
+
 		const idx = line.indexOf(":");
 		if (idx < 0) continue;
 		const key = line.slice(0, idx).trim();
 		let val = line.slice(idx + 1).trim();
 
-		if (val === "true") { data[key] = true; continue; }
-		if (val === "false") { data[key] = false; continue; }
-		if (/^-?\d+(\.\d+)?$/.test(val)) { data[key] = Number(val); continue; }
+		// 收集紧随其后的缩进行（块状数组 / 多行标量）
+		const continuation: string[] = [];
+		while (i + 1 < lines.length && /^\s+\S/.test(lines[i + 1])) {
+			continuation.push(lines[i + 1]);
+			i++;
+		}
+
+		if (val === "" && continuation.length > 0) {
+			const items = continuation.map((l) => unquote(l.replace(/^\s*-\s*/, "")));
+			const isAllItems = continuation.every((l) => /^\s*-/.test(l));
+			const looksLikeObjects = continuation.some((l) => /^\s*-\s*[^:\s][^:]*:/.test(l));
+			if (isAllItems && !looksLikeObjects) {
+				data[key] = items;
+				continue;
+			}
+			data[key] = continuation.map((l) => l.trim()).join("\n");
+			continue;
+		}
+
+		if (/^[|>][+-]?$/.test(val)) {
+			data[key] = continuation
+				.map((l) => l.trim())
+				.join(val.startsWith(">") ? " " : "\n");
+			continue;
+		}
+
+		if (val === "true") {
+			data[key] = true;
+			continue;
+		}
+		if (val === "false") {
+			data[key] = false;
+			continue;
+		}
+		if (/^-?\d+(\.\d+)?$/.test(val)) {
+			data[key] = Number(val);
+			continue;
+		}
 		if (val.startsWith("[") && val.endsWith("]")) {
 			data[key] = val
 				.slice(1, -1)
@@ -78,11 +130,7 @@ function parseFrontmatter(text: string): { data: Record<string, unknown>; body: 
 				.filter(Boolean);
 			continue;
 		}
-		// 去掉成对的引号
-		if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-			val = val.slice(1, -1);
-		}
-		data[key] = val;
+		data[key] = unquote(val);
 	}
 
 	return { data, body };

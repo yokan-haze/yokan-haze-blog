@@ -23,6 +23,7 @@ import {
 import { Icon } from "astro-icon/components";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import PostInlineEditor from "@/components/admin/PostInlineEditor.astro";
 import CoverImage from "@/components/common/CoverImage.astro";
 import PostMetadata from "@/components/layout/PostMeta.astro";
 import RecommendedPost from "@/components/misc/RecommendedPost.astro";
@@ -77,6 +78,14 @@ const bannerPostMeta = {
 	words: remarkPluginFrontmatter.words,
 	minutes: remarkPluginFrontmatter.minutes,
 };
+
+// 右下角「编辑」按钮要改的那一份文件（git 仓库里的真实路径）。
+// entry.filePath 是 src/content/posts/xxx.md；万一拿不到（比如来自远程加载器），
+// 用 entry.id 拼回来 —— 两者在本文集合下是同一个文件。
+const postFilePath =
+	entry.filePath && entry.filePath.startsWith("src/content/posts/")
+		? entry.filePath
+		: `src/content/posts/${entry.id}.md`;
 
 // 处理随机图：如果image为"api"，则从配置的API获取随机图
 const processedImage = processCoverImageSync(entry.data.image, entry.id);
@@ -731,4 +740,8 @@ const seriesData = await getSeriesPosts(entry);
 
   <!-- 评论 -->
   {entry.data.comment && !entry.data.password && <Comment post={entry} />}
+
+  <!-- 站长要求：文章页右下角一个「编辑」，点了就地改这一篇，不跳到后台。
+       逻辑见 src/utils/admin-init.ts 的 initPostInlineEditor -->
+  <PostInlineEditor filePath={postFilePath} title={entry.data.title} />
 </MainGridLayout>

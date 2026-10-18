@@ -69,6 +69,23 @@ function yamlValue(v: unknown): string {
 	return JSON.stringify(String(v ?? ""));
 }
 
+// 已知字段（FIELDS）→ frontmatter 行。空值不输出。
+function serializeFields(type: string, data: Record<string, unknown>): string[] {
+	const lines: string[] = [];
+	for (const k of FIELDS[type] ?? []) {
+		const v = data[k];
+		if (v === undefined || v === null || v === "") continue;
+		if (Array.isArray(v) && v.length === 0) continue;
+		// published 用裸日期（YAML 里是 date 类型），其余走 yamlValue
+		if (k === "published" && typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+			lines.push(`${k}: ${v}`);
+			continue;
+		}
+		lines.push(`${k}: ${yamlValue(v)}`);
+	}
+	return lines;
+}
+
 function buildFile(type: string, data: Record<string, unknown>, body: string): string {
 	// published 是主题 schema 的必填项，缺了会让整个构建失败
 	// （真实事故：站长试用编辑器发了一篇没带 published 的文章，
@@ -78,20 +95,74 @@ function buildFile(type: string, data: Record<string, unknown>, body: string): s
 		data.published = new Date().toISOString().slice(0, 10);
 	}
 
-	const order = FIELDS[type];
-	const lines: string[] = ["---"];
-	for (const k of order) {
-		const v = data[k];
-		if (v === undefined || v === null || v === "") continue;
-		// published 用裸日期（YAML 里是 date 类型），其余走 yamlValue
-		if (k === "published" && typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-			lines.push(`${k}: ${v}`);
-			continue;
-		}
-		lines.push(`${k}: ${yamlValue(v)}`);
-	}
-	lines.push("---", "");
+	const lines = ["---", ...serializeFields(type, data), "---", ""];
 	return lines.join("\n") + (body ? body.replace(/\s+$/, "") + "\n" : "");
+}
+
+function b64ToUtf8(b64: string): string {
+	const bin = atob(b64.replace(/\s/g, ""));
+	const bytes = new Uint8Array(bin.length);
+	for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+	return new TextDecoder().decode(bytes);
+}
+
+// 把已有文件的 frontmatter 拆成「块」：一个顶层 `key:` 行 + 它下面所有缩进行
+// （块状数组、多行标量都靠这个原样保留）。不是键的裸行单独成块，也原样保留。
+function splitFrontmatterBlocks(text: string): { blocks: string[][]; keys: string[]; body: string } | null {
+	if (!text.startsWith("---")) return null;
+	const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
+	if (!match) return null;
+
+	const blocks: string[][] = [];
+	const keys: string[] = [];
+	for (const line of match[1].split(/\r?\n/)) {
+		const kv = /^([A-Za-z0-9_-]+)\s*:/.exec(line);
+		if (kv) {
+			blocks.push([line]);
+			keys.push(kv[1]);
+		} else if (blocks.length > 0) {
+			blocks[blocks.length - 1].push(line);
+		} else if (line.trim()) {
+			blocks.push([line]);
+			keys.push("");
+		}
+	}
+	return { blocks, keys, body: text.slice(match[0].length) };
+}
+
+// 更新已有文件：保留「这次没改到」的 frontmatter 字段。
+//
+// 为什么必须这样做：编辑器（/admin/edit/ 和文章页的就地编辑）只提交它管得着的
+// 那几个字段（标题 / 简介 / 标签 / 分类 / 草稿 / 正文）。如果按新版整体重写，
+// 文章里的 pinned、comment、password、series、slug 这些字段会被静默丢掉 ——
+// 那是「提交成功、内容却被改坏」，比报错更糟。
+//
+// 规则：
+//   · 调用方明确给了值的键 → 按 FIELDS 顺序重写（空值 = 删掉这一项）
+//   · 没给的键 → 原样保留（连引号、块状数组的写法都不动）
+//   · body 传 undefined → 保留原正文；传空字符串 → 明确清空正文
+function mergeFile(
+	type: string,
+	existing: string,
+	data: Record<string, unknown>,
+	body: string | undefined
+): string {
+	const parsed = splitFrontmatterBlocks(existing);
+	if (!parsed) return buildFile(type, data, body ?? "");
+
+	const provided = new Set(Object.keys(data));
+	const out: string[] = [];
+
+	parsed.blocks.forEach((block, index) => {
+		const key = parsed.keys[index];
+		if (key && provided.has(key)) return; // 交给下面按新值重写 / 删除
+		out.push(...block);
+	});
+
+	out.push(...serializeFields(type, data));
+
+	const nextBody = body === undefined ? parsed.body : body;
+	return ["---", ...out, "---", ""].join("\n") + (nextBody ? nextBody.replace(/\s+$/, "") + "\n" : "");
 }
 
 async function ghGet(repo: string, branch: string, path: string, token: string) {
@@ -188,12 +259,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 	}
 
 	const path = `${dir}/${filename}`;
-	const content = buildFile(type, data, String(payload.body ?? ""));
+	// body 传 undefined = 不改正文（更新时保留原文）；传空字符串 = 明确清空
+	const bodyText = payload.body === undefined ? undefined : String(payload.body);
 
 	try {
 		const repo = env.GH_REPO || DEFAULT_REPO;
 		const branch = env.GH_BRANCH || DEFAULT_BRANCH;
 		const existing = await ghGet(repo, branch, path, env.GH_TOKEN);
+		// 更新已有文件：先读出原文，把没改到的 frontmatter 字段原样带过去
+		const existingText = existing?.content ? b64ToUtf8(existing.content) : null;
+		const content = existingText
+			? mergeFile(type, existingText, data, bodyText)
+			: buildFile(type, data, bodyText ?? "");
 		await ghPut(
 			repo,
 			branch,

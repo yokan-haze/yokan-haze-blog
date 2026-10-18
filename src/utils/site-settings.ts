@@ -32,7 +32,27 @@ function bool(key: string, fallback: boolean): boolean {
 	return typeof v === "boolean" ? v : fallback;
 }
 
-export const siteSettings = {
+// 显式声明导出类型：tsconfig 开了 --isolatedDeclarations，
+// 导出常量必须能脱离推断独立声明（否则 pnpm type-check 报 TS9013）。
+export interface SiteSettings {
+	theme: string;
+	hue: number;
+	wallpaperMode: string;
+	fullscreenLayout: string;
+	postListLayout: string;
+	overlayOpacity: number;
+	overlayBlur: number;
+	overlayCardOpacity: number;
+	wavesEnabled: boolean;
+	gradientEnabled: boolean;
+	sakuraEnabled: boolean;
+	bannerTitleEnabled: boolean;
+	bannerCarouselEnabled: boolean;
+	cardBorderEnabled: boolean;
+	cardFollowThemeEnabled: boolean;
+}
+
+export const siteSettings: SiteSettings = {
 	// 明暗模式："light" | "dark" | "system"
 	theme: str("theme", "dark"),
 	// 主题色相 0-360

@@ -1,4 +1,6 @@
 ---
+import { Icon } from "astro-icon/components";
+
 // 写作入口浮动按钮
 //
 // 站长反馈：站内发布文章的页面（/admin/edit/）在站上找不到入口。
@@ -6,6 +8,10 @@
 //
 // 关于「别人会不会看到」：站长明确表示他有自己的安排，不用担心，
 // 所以这里不再做隐藏逻辑。真正的保护是接口的密码（没有密码发不了文章）。
+//
+// 2026-10-18：原来图标写的是 `<span class="material-symbols:edit-document">` ——
+// 那只是个类名，主题里没有对应规则，等于没有图标；移动端又把文字藏了，
+// 于是变成一个点不到的小绿圆。改用主题统一的 <Icon> 组件。
 ---
 
 <a
@@ -15,15 +21,17 @@
   title="写文章"
   class="fixed z-40 flex items-center gap-2 rounded-full shadow-lg transition-transform duration-200 hover:scale-105"
 >
-  <span class="material-symbols:edit-document text-xl"></span>
+  <Icon name="material-symbols:edit-document" class="text-xl" aria-hidden="true" />
   <span class="write-fab-label text-sm font-medium">写文章</span>
 </a>
 
 <style>
-  /* 放在右下角，但要避开主题自带的设置齿轮（它也在右下角），
-     所以整体上移一段。移动端缩小成只有图标。 */
+  /* 放在右下角，但要避开主题自带的浮动控件（它们也贴在右边，是
+     right:~1rem 起的一列圆形按钮）。所以和文章页的「编辑」按钮一起
+     往左让开一列，否则会有半个圆形按钮被压在下面、点不到。
+     移动端只有图标。 */
   #write-fab {
-    right: 1.25rem;
+    right: 5.5rem;
     bottom: 6.5rem;
     padding: 0.7rem 1.1rem;
     background: var(--primary);
@@ -37,9 +45,9 @@
 
   @media (max-width: 767px) {
     #write-fab {
-      right: 0.9rem;
-      bottom: 5.5rem;
-      padding: 0.75rem;
+      right: 4.5rem;
+      bottom: 5.6rem;
+      padding: 0.7rem;
     }
 
     .write-fab-label {

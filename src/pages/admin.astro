@@ -10,24 +10,11 @@ import MainGridLayout from "@/layouts/MainGridLayout.astro";
 // 安全：密码只保存在**你自己浏览器的 localStorage** 里，只随请求头发给本站的
 // /api/settings，不写进代码、不进日志、也不经过任何第三方。
 // 这个页面没有加进导航栏，也没有对外链接，并且带 noindex。
-
-const KEYS = [
-	"theme",
-	"hue",
-	"wallpaperMode",
-	"fullscreenLayout",
-	"postListLayout",
-	"overlayOpacity",
-	"overlayBlur",
-	"overlayCardOpacity",
-	"wavesEnabled",
-	"gradientEnabled",
-	"sakuraEnabled",
-	"bannerTitleEnabled",
-	"bannerCarouselEnabled",
-	"cardBorderEnabled",
-	"cardFollowThemeEnabled",
-];
+//
+// 交互逻辑在 src/utils/admin-init.ts（initSettingsPage）：主题用 Swup 做软导航，
+// 页面里的 is:inline 脚本软导航后不会重跑（站长反馈「不刷新就没用」），
+// 所以逻辑统一放在 Layout 的打包脚本里，靠 astro:page-load 重新绑定。
+// 设置键白名单也一并搬到了那个文件。
 ---
 
 <MainGridLayout title="设置后台" description="把当前外观保存为全站默认。">
@@ -73,107 +60,3 @@ const KEYS = [
     <div id="out" class="mt-3 text-sm"></div>
   </div>
 </MainGridLayout>
-
-<script is:inline define:vars={{ KEYS }}>
-  (function () {
-    var PW_KEY = "adminPassword";
-
-    var pwEl = document.getElementById("pw");
-    var pwState = document.getElementById("pwState");
-    var listEl = document.getElementById("list");
-    var outEl = document.getElementById("out");
-
-    function showPwState() {
-      var v = localStorage.getItem(PW_KEY);
-      pwState.textContent = v ? "✓ 已记住（长度 " + v.length + "）" : "尚未记住";
-      if (v) pwEl.value = v;
-    }
-
-    document.getElementById("savePw").addEventListener("click", function () {
-      var v = pwEl.value.trim();
-      if (!v) { pwState.textContent = "请先填密码"; return; }
-      localStorage.setItem(PW_KEY, v);
-      showPwState();
-    });
-
-    // 主题把布尔存成 "true"/"false"、数字存成字符串，这里还原成真实类型，
-    // 否则接口的白名单会因为类型不符把值丢掉。
-    function readLocal() {
-      var out = {};
-      for (var i = 0; i < KEYS.length; i++) {
-        var k = KEYS[i];
-        var raw = localStorage.getItem(k);
-        if (raw === null) continue;
-        if (raw === "true") out[k] = true;
-        else if (raw === "false") out[k] = false;
-        else if (raw !== "" && !isNaN(Number(raw))) out[k] = Number(raw);
-        else out[k] = raw;
-      }
-      return out;
-    }
-
-    function esc(s) {
-      return String(s).replace(/[&<>"']/g, function (c) {
-        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-      });
-    }
-
-    function render(obj) {
-      var keys = Object.keys(obj);
-      if (!keys.length) {
-        listEl.textContent = "这台浏览器里没找到任何设置 —— 先去设置面板调一下，再回来点这里。";
-        return;
-      }
-      var html = "<table class='w-full text-sm'>";
-      for (var i = 0; i < keys.length; i++) {
-        html += "<tr><td class='py-1 pr-4 text-75'>" + esc(keys[i]) +
-          "</td><td class='py-1 text-90 font-medium'>" + esc(obj[keys[i]]) + "</td></tr>";
-      }
-      html += "</table>";
-      listEl.innerHTML = html;
-    }
-
-    var lastRead = null;
-
-    document.getElementById("read").addEventListener("click", function () {
-      lastRead = readLocal();
-      render(lastRead);
-    });
-
-    document.getElementById("push").addEventListener("click", function () {
-      var pw = pwEl.value.trim();
-      if (!pw) { outEl.textContent = "先在上面输入并记住密码"; return; }
-      var data = lastRead || readLocal();
-      if (!Object.keys(data).length) {
-        outEl.textContent = "没有可保存的设置，先点「读取本机设置」";
-        return;
-      }
-
-      outEl.textContent = "提交中……";
-      fetch("/api/settings", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-admin-password": pw },
-        body: JSON.stringify({ settings: data }),
-      })
-        .then(function (r) {
-          return r.json().then(function (j) { return { status: r.status, body: j }; });
-        })
-        .then(function (res) {
-          if (res.body && res.body.ok) {
-            outEl.textContent =
-              "✓ 已保存 " + Object.keys(res.body.saved || {}).length +
-              " 项。约 1 分钟后重新构建完成，届时所有人看到的都是这个样子。";
-          } else {
-            outEl.textContent =
-              "✗ 失败（HTTP " + res.status + "）：" +
-              ((res.body && res.body.error) || "未知错误");
-          }
-        })
-        .catch(function (e) {
-          outEl.textContent = "✗ 请求出错：" + e;
-        });
-    });
-
-    showPwState();
-  })();
-</script>

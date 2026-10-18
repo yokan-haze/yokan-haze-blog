@@ -27,20 +27,77 @@
 
 **Cloudflare 环境变量**（已配，勿动）：`ADMIN_PASSWORD`、`GH_TOKEN`（都是 Secret 类型）。
 
-## 三、站长明确要求、还没做的（优先做这些）
+## 二·补：2026-10-18 夜里这一轮（代码完成、本地实测通过，等上线）
 
-1. **后台脚本在 SPA 换页后不重新初始化** —— 站长反馈「每次用都要刷新一遍，不刷新就没用」。
-   主题用 Swup，页面换页不重载，`<script is:inline>` 只在首次加载执行。
-   需要改成监听 `swup:page:view` / `astro:page-load` 重新初始化，或把后台页面排除在 SPA 之外。
+站长提的四件事已全部改完，**验证方式**见每条的「怎么验的」：
 
-2. **音乐卡片加载很慢** —— 每次加载都请求第三方 Meting 接口（`api.i-meto.com`），国内时快时慢。
-   建议改成不阻塞首屏（懒加载 / 点击后再请求），或直接改成 local 模式。
+### 1. 后台换页后不初始化 → 已修（根因不是「没监听事件」）
 
-3. **文章详情页右下角要「编辑」按钮，就地编辑** ——
-   站长要的不是跳到 `/admin/edit/`，而是**在文章页面里直接改这一篇**。
-   实现思路：文章页加悬浮按钮 → 弹出面板/内联表单 → 调用 `POST /api/content` 覆盖同一文件。
+- **根因**：`/admin/`、`/admin/list/`、`/admin/edit/` 的逻辑写在各页面的
+  `<script is:inline>` 里。Astro 把这些脚本渲染到 `</html>` 之后（swup 容器之外），
+  软导航时 swup 只换容器内容 —— 脚本既不会执行也不会被插进文档，页面看着在、点了没反应。
+- **改法**：逻辑全部搬进 `src/utils/admin-init.ts`，由 `Layout.astro` 的打包脚本调用一次，
+  监听 `astro:page-load` 与 `swup:page:view` 重新绑定；每个入口按钮用
+  `data-admin-bound` 打标（DOM 被 swup 换掉后标记自然消失 → 新页面一定重新绑定）。
+  三个 admin 页面里的内联脚本已删除。
+- **怎么验的**：headless Chrome 真点 —— 首页点「写文章」软导航到 `/admin/edit/`，
+  确认 `window` 标记还在（证明没整页刷新），再点「读取内容」，状态文字出现；
+  再软导航到 `/admin/list/`，用 mock 接口读列表并渲染出 `first.md`。
 
-4. **编辑器标题字号** —— 已从 text-sm 改成 1.6rem（commit e899605），需站长确认到位。
+### 2. 音乐卡片加载慢 → 改成不阻塞
+
+- `MusicManager.astro`：歌单成功拉到后写 `localStorage`（键 `firefly-music-playlist-v1`，TTL 6 小时），
+  6 小时内直接用缓存、**完全不请求第三方**；接口不可用时最多等 4 秒（每个镜像单独 AbortController），
+  且原来「串行重试 3 个镜像」改成**并行抢第一个成功的**（最坏情况从 ~3×超时 变成 1×超时）。
+  缓存过期但接口挂了 → 用旧歌单兜底，卡片不空。
+- `MusicPlayerView.astro`：加载遮罩不再去掉 `pointer-events-none`（以前加载期间整张卡片点不动）；
+  失败时标题变成「歌单加载失败 · 点此重试」，点标题或点播放都会重新请求。
+- **怎么验的**：用 CDP `Fetch` 域把三个 meting 域名全部挂起（模拟接口卡死）：
+  4.3 秒内初始化结束、遮罩淡出、卡片可点、点播放会重新发起请求；
+  预置缓存后 0.6 秒内出歌单；预置过期缓存 + 接口卡死 → 出旧歌单。
+
+### 3. 文章页右下角「编辑」，就地编辑（不跳页）
+
+- 新组件 `src/components/admin/PostInlineEditor.astro` + `admin-init.ts` 的 `initPostInlineEditor`。
+- 文章页（`src/pages/posts/[...slug].astro`）用 `entry.filePath` 传真实仓库路径
+  （`src/content/posts/xxx.md`），按钮 `data-file-path` 带着它。
+- 点按钮 → 弹层 → `GET /api/file` 读回标题/简介/标签/分类/草稿/正文 → 改完
+  `POST /api/content`（`filename` 用原文件名，走更新）→ 停留在这篇文章。
+- **必须知道的两个坑**（都实测踩到了）：
+  1. `#content-wrapper` 带 `.onload-animation`（`animation: fade-in-up ... forwards`），
+     动画结束后 `transform` 是 `translateY(0)` 而不是 `none` → **会成为 `position: fixed` 的包含块**，
+     按钮直接跑到屏幕外（实测 `bottom: -1037px`）。所以初始化时把整个
+     `#post-edit-root` **搬到 `document.body`**；换页时由 `cleanupStaleEditors()` 清理旧节点。
+  2. 一次软导航里 `astro:page-load` 和 `swup:page:view` **都会来**，清理函数被调用两次；
+     不能无脑删 body 下所有节点，否则会把刚搬出来的按钮自己删掉（第一版就这么翻车了）。
+     现在的判定：容器里有新 SSR 节点就全删旧；否则按 `data-admin-url` 比对 URL。
+- 按钮位置：`right: 5.5rem; bottom: 10.2rem`（和「写文章」同一列、让开主题自带的圆形浮动控件，
+  间距 24px；移动端 `right: 4.5rem`，保留「编辑」文字以便和纯图标的「写文章」区分）。
+
+### 4. 编辑器标题字号 → 已确认到位（并顺手修了两个小问题）
+
+- `#title` 是 `style="font-size: 1.6rem; line-height: 1.3"`，实测 computed `25.6px / 700`，
+  简介 16px，正文 24 行 —— 层次成立。
+- 顺手：`WriteFab` 的图标原本写的是 `<span class="material-symbols:edit-document">`（只是个类名，
+  没有对应图标规则，等于没有图标；移动端又把文字藏了 → 一个点不到的小绿圆），
+  改用主题的 `<Icon>` 组件；同时把「写文章」按钮左移一列，避免压住主题自带的圆形浮动控件。
+- 另外 `src/utils/site-settings.ts` 的导出没写显式类型，`pnpm type-check`
+  （`--isolatedDeclarations`）一直是红的 —— 本次补了 `SiteSettings` 接口，现在 type-check 通过。
+
+### 接口层同时加固（不然「就地编辑」会悄悄改坏文章）
+
+- `functions/api/content.ts`：更新已有文件时**保留调用方没提交的 frontmatter 字段**
+  （`pinned` / `comment` / `slug` / `password` / `series` …原样保留，连写法都不动）；
+  `body` 不传 = 保留原正文（传空串才是明确清空）。以前是按新版整体重写，这些字段会被静默丢掉。
+- `functions/api/file.ts`：frontmatter 解析补上块状写法（`tags:` 换行 `- 随笔`）与多行标量，
+  否则编辑器把标签读成空、保存时又把它抹掉。
+- **怎么验的**：`ff-api-test.mts`（会话工作区里）用假 GitHub API 直接跑 `onRequestPost` /
+  `onRequestGet`，11 组断言全过：字段保留、空值删除、`published` 裸日期、401、块状 tags 读成数组。
+
+## 三、站长明确要求、还没做的
+
+（本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
+
 
 ## 四、站长已经确认过的硬规矩（不要违背）
 
@@ -56,6 +113,16 @@
 - PowerShell 里跑内联 node 脚本，中文引号必坏 —— **一律写成 .mjs 文件再执行**。
 - ffmpeg 不能直接写项目目录（沙箱），先输出到会话工作区再 copyFileSync。
 - 内容接口写出的 frontmatter 必须符合主题 schema：`published` 必填，且要用裸日期（不加引号）。
+- **页面级的 `<script is:inline>` 会被渲染到 `</html>` 之后**（swup 容器之外）：
+  软导航时既不执行也不插入文档。后台类逻辑一律放 `src/utils/*.ts` + Layout 打包脚本 + `astro:page-load`。
+- **`#content-wrapper` 有 `.onload-animation`（`animation: fade-in-up ... forwards`）**，
+  动画结束后 `transform` 仍是 `translateY(0)` 而非 `none` → 它是 `position: fixed` 的包含块，
+  里面的悬浮按钮会按整篇文章的高度定位（实测 `bottom: -1037px`）。悬浮件要么脱离容器
+  （搬到 `body`），要么别放在 `#content-wrapper` 里。
+- **一次软导航会连发 `astro:page-load` 和 `swup:page:view`**：任何「先清理再重建」的逻辑
+  都要幂等，否则第二次调用会把第一次建好的东西删掉。
+- `WriteFab.astro` 里原本用 `<span class="material-symbols:edit-document">` 当图标 —— 那只是
+  一个类名，没有对应规则；图标要用主题统一的 `<Icon name="material-symbols:..." />`。
 - 长提交信息用 `git commit -F <文件>`，否则引号会被 shell 截断。
 - 本地 git 与远端 hash 会分叉（API 推送导致），用 `push-via-api2.mjs <本地base> main`。
 

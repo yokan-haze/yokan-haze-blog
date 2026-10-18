@@ -7,6 +7,12 @@ import MainGridLayout from "@/layouts/MainGridLayout.astro";
 // 约 1 分钟后自动重新构建上线。
 //
 // 安全：密码复用 /admin/ 那套（同一个 localStorage 键），只发给本站接口。
+//
+// 交互逻辑在 src/utils/admin-init.ts（initEditPage）：主题用 Swup 做软导航，
+// 页面里的 is:inline 脚本软导航后不会重跑（站长反馈「不刷新就没用」），
+// 所以逻辑放在 Layout 的打包脚本里，靠 astro:page-load 重新绑定。
+//
+// 站长要求标题字号要大（像标题那样），正文加高：见下面 #title 的 1.6rem。
 
 const TYPES = [
 	{ key: "posts", label: "文章" },
@@ -89,110 +95,3 @@ const TYPES = [
     </div>
   </div>
 </MainGridLayout>
-
-<script is:inline>
-  (function () {
-    var PW_KEY = "adminPassword";
-    var pw = document.getElementById("pw");
-    var out = document.getElementById("out");
-
-    var saved = localStorage.getItem(PW_KEY);
-    if (saved) pw.value = saved;
-
-    document.getElementById("go").addEventListener("click", function () {
-      var password = pw.value.trim();
-      if (!password) { out.textContent = "先填密码"; return; }
-      localStorage.setItem(PW_KEY, password);
-
-      var type = document.getElementById("type").value;
-      var title = document.getElementById("title").value.trim();
-      var description = document.getElementById("description").value.trim();
-      var tagsRaw = document.getElementById("tags").value.trim();
-      var category = document.getElementById("category").value.trim();
-      var draft = document.getElementById("draft").checked;
-      var body = document.getElementById("body").value;
-      var filename = document.getElementById("filename").value.trim();
-
-      if (type !== "dynamic" && !title) { out.textContent = "标题不能为空"; return; }
-
-      var tags = tagsRaw ? tagsRaw.split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
-
-      var data = { title: title, description: description, tags: tags, category: category, draft: draft };
-      if (type === "dynamic") data = { draft: draft };
-
-      out.textContent = "提交中……";
-      fetch("/api/content", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-admin-password": password },
-        body: JSON.stringify({ type: type, filename: filename || undefined, data: data, body: body }),
-      })
-        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
-        .then(function (res) {
-          if (res.j && res.j.ok) {
-            out.textContent = "✓ " + (res.j.updated ? "已更新" : "已发布") + "：" + res.j.filename + " —— 约 1 分钟后上线";
-          } else {
-            out.textContent = "✗ " + ((res.j && res.j.error) || ("HTTP " + res.s));
-          }
-        })
-        .catch(function (e) { out.textContent = "✗ 请求失败：" + e; });
-    });
-
-    // ── 修改已有文章：URL 带 ?file= 时读回并把内容填进表单 ──
-    // 之前的实现有个致命缺陷：只有 localStorage 里已存密码才会去读，
-    // 而密码只在「点发布」时才保存 —— 所以第一次进来表单永远是空的
-    // （站长反馈「点击编辑文章为什么没有字」）。现在改成：
-    //   · 进了带 ?file= 的页面就调用一次
-    //   · 没有密码时提示，并可点「读取内容」按钮用输入框里的密码再试
-    var loadExisting = (function tryLoadExisting() {
-      var file = new URLSearchParams(location.search).get("file");
-      var state = document.getElementById("loadState");
-      if (!file || !state) return;
-
-      var parts = file.split("/");
-      document.getElementById("filename").value = parts[parts.length - 1].replace(/\.md$/, "");
-      if (file.indexOf("/dynamic/") >= 0) document.getElementById("type").value = "dynamic";
-      else if (file.indexOf("/projects/") >= 0) document.getElementById("type").value = "projects";
-      else document.getElementById("type").value = "posts";
-
-      var password = (document.getElementById("pw").value || "").trim() || localStorage.getItem(PW_KEY) || "";
-      if (!password) {
-        state.textContent = "要修改的是 " + file + " —— 请在下方填入密码，然后点「读取内容」";
-        return;
-      }
-      localStorage.setItem(PW_KEY, password);
-
-      state.textContent = "正在读取 " + file + " ……";
-      fetch("/api/file?path=" + encodeURIComponent(file), {
-        headers: { "x-admin-password": password },
-      })
-        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
-        .then(function (res) {
-          if (!res.j || !res.j.ok) {
-            state.textContent = "读取失败：" + ((res.j && res.j.error) || ("HTTP " + res.s));
-            return;
-          }
-          var d = res.j.data || {};
-          document.getElementById("title").value = d.title || "";
-          document.getElementById("description").value = d.description || "";
-          document.getElementById("tags").value = Array.isArray(d.tags) ? d.tags.join(", ") : (d.tags || "");
-          document.getElementById("category").value = d.category || "";
-          document.getElementById("draft").checked = d.draft === true;
-          document.getElementById("body").value = res.j.body || "";
-          state.textContent = "✓ 已读入 " + file + " —— 改完点发布覆盖（历史在 Git 里）";
-        })
-        .catch(function (e) { state.textContent = "读取失败：" + e; });
-    })();
-
-    var reloadBtn = document.getElementById("reload");
-    if (reloadBtn) {
-      reloadBtn.addEventListener("click", function () {
-        var file = new URLSearchParams(location.search).get("file");
-        if (!file) {
-          document.getElementById("loadState").textContent = "当前没有指定要修改的文章（URL 里没有 ?file=），这里只能新建。";
-          return;
-        }
-        loadExisting();
-      });
-    }
-  })();
-</script>

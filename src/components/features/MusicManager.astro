@@ -130,44 +130,121 @@ const managerConfigStr = JSON.stringify({
         window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
     }
 
-    // ── Meting fetch ─────────────────────────────────────────
-    async function fetchMetingData() {
-        if (!config.meting) return;
-        var m = config.meting;
-        var apis = [m.api].concat(m.fallbackApis || []);
+    // ── 歌单缓存 ─────────────────────────────────────────────
+    // 站长反馈「音乐卡片加载慢」：每次进站都要等第三方 Meting 接口
+    // （api.i-meto.com，国内时快时慢）。慢的时候卡片一直转圈、还点不动。
+    // 现在：
+    //   · 成功的歌单存进 localStorage，6 小时内直接用缓存 —— 卡片立刻可用
+    //   · 第三方慢/挂掉时最多等 4 秒（下面 fetchMetingData），不会无限转圈
+    //   · 缓存过期但接口挂了，就先用旧缓存顶上，不让卡片空着
+    var CACHE_KEY = 'firefly-music-playlist-v1';
+    var CACHE_TTL = 6 * 60 * 60 * 1000; // 6 小时
+    var REQUEST_TIMEOUT = 4000; // 单个镜像最多等 4 秒
 
-        for (var i = 0; i < apis.length; i++) {
-            var baseApi = apis[i];
-            if (!baseApi) continue;
-            try {
-                var fetchUrl = baseApi
-                    .replace(':server', m.server)
-                    .replace(':type', m.type)
-                    .replace(':id', m.id)
-                    .replace(':r', Math.random());
-                if (m.auth) fetchUrl += '&auth=' + m.auth;
-
-                var res = await fetch(fetchUrl);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                var data = await res.json();
-
-                if (Array.isArray(data) && data.length > 0) {
-                    state.playlist = data.map(function (item) {
-                        return {
-                            name: item.title || item.name || 'Unknown',
-                            artist: item.author || item.artist || 'Unknown',
-                            url: item.url,
-                            pic: item.pic || item.cover || '',
-                            lrc: item.lrc
-                        };
-                    });
-                    return;
-                }
-            } catch (e) {
-                console.warn('Meting API failed for ' + baseApi, e);
-            }
+    function readPlaylistCache() {
+        try {
+            var raw = localStorage.getItem(CACHE_KEY);
+            if (!raw) return null;
+            var obj = JSON.parse(raw);
+            if (!obj || !Array.isArray(obj.playlist) || obj.playlist.length === 0) return null;
+            return { playlist: obj.playlist, ts: Number(obj.ts) || 0 };
+        } catch (e) {
+            return null;
         }
-        throw new Error('All Meting APIs failed');
+    }
+
+    function writePlaylistCache(playlist) {
+        try {
+            var payload = JSON.stringify({ ts: Date.now(), playlist: playlist });
+            // 歌单里可能带内联歌词，别把 localStorage 塞爆（塞爆会让后续写入全部失败）
+            if (payload.length > 200 * 1024) return;
+            localStorage.setItem(CACHE_KEY, payload);
+        } catch (e) {
+            // 隐私模式 / 配额满：写不进去也不影响本次播放
+        }
+    }
+
+    function normalizePlaylist(data) {
+        if (!Array.isArray(data)) return [];
+        return data.map(function (item) {
+            return {
+                name: item.title || item.name || 'Unknown',
+                artist: item.author || item.artist || 'Unknown',
+                url: item.url,
+                pic: item.pic || item.cover || '',
+                lrc: item.lrc
+            };
+        }).filter(function (track) { return !!track.url; });
+    }
+
+    // ── Meting fetch ─────────────────────────────────────────
+    // 并行抢第一个能用的镜像。原来是串行重试：坏一个就多等一整个超时，
+    // 三个都坏时首屏要等十几秒（用户看到的就是「卡片一直转」）。
+    function fetchMetingData() {
+        var m = config.meting;
+        if (!m) return Promise.reject(new Error('no meting config'));
+
+        var apis = [m.api].concat(m.fallbackApis || []).filter(Boolean);
+        var controllers = [];
+
+        function attempt(baseApi) {
+            var url = baseApi
+                .replace(':server', m.server)
+                .replace(':type', m.type)
+                .replace(':id', m.id)
+                .replace(':r', Math.random());
+            if (m.auth) url += '&auth=' + m.auth;
+
+            var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            if (ctrl) controllers.push(ctrl);
+
+            return new Promise(function (resolve, reject) {
+                var timer = setTimeout(function () {
+                    if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+                    reject(new Error('timeout'));
+                }, REQUEST_TIMEOUT);
+
+                fetch(url, ctrl ? { signal: ctrl.signal, cache: 'no-store' } : { cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        clearTimeout(timer);
+                        var list = normalizePlaylist(data);
+                        if (!list.length) throw new Error('empty playlist');
+                        resolve(list);
+                    })
+                    .catch(function (e) {
+                        clearTimeout(timer);
+                        reject(e);
+                    });
+            });
+        }
+
+        return new Promise(function (resolve, reject) {
+            var pending = apis.length;
+            var errors = [];
+            if (!pending) { reject(new Error('no meting api')); return; }
+
+            apis.forEach(function (baseApi) {
+                attempt(baseApi)
+                    .then(function (list) {
+                        // 谁先回来用谁，其余镜像立刻掐掉，别在后台继续耗流量
+                        controllers.forEach(function (ctrl) {
+                            try { ctrl.abort(); } catch (e) {}
+                        });
+                        resolve(list);
+                    })
+                    .catch(function (e) {
+                        errors.push(e);
+                        pending -= 1;
+                        if (pending === 0) {
+                            reject(new Error('Meting 镜像全部失败：' + errors.map(function (x) { return x.message; }).join(' | ')));
+                        }
+                    });
+            });
+        });
     }
 
     // ── Lyrics ───────────────────────────────────────────────
@@ -401,14 +478,40 @@ const managerConfigStr = JSON.stringify({
         }
     });
 
-    // ── Init (idempotent) ────────────────────────────────────
-    async function init() {
-        if (state.initialized || state.initializing) return;
+    // ── Init ─────────────────────────────────────────────────
+    // force=true 用于「加载失败后点重试」。
+    // 无论如何都会走到 fm:init / fm:status，不会让卡片停在加载态。
+    async function init(force) {
+        if (state.initializing) return;
+        if (state.initialized && !force) return;
         state.initializing = true;
+        state.initialized = false;
+        emit('fm:status', { status: 'loading' });
 
         try {
             if (config.mode === 'meting' && config.meting) {
-                await fetchMetingData();
+                var cached = readPlaylistCache();
+                var fresh = !!(cached && (Date.now() - cached.ts) < CACHE_TTL);
+
+                if (fresh) {
+                    // 命中缓存：先用缓存把卡片点亮，不等第三方
+                    state.playlist = cached.playlist;
+                } else {
+                    try {
+                        var list = await fetchMetingData();
+                        state.playlist = list;
+                        writePlaylistCache(list);
+                    } catch (e) {
+                        console.warn('Music: 在线歌单接口不可用', e);
+                        if (cached && cached.playlist.length > 0) {
+                            // 接口挂了但手里有旧缓存：先用旧的，卡片不至于空着
+                            state.playlist = cached.playlist;
+                            emit('fm:status', { status: 'stale' });
+                        } else {
+                            throw e;
+                        }
+                    }
+                }
             } else if (config.mode === 'local') {
                 state.playlist = config.localPlaylist || [];
             }
@@ -423,6 +526,7 @@ const managerConfigStr = JSON.stringify({
                 }
 
                 state.initialized = true;
+                state.error = null;
 
                 emit('fm:init', {
                     playlist: state.playlist,
@@ -430,6 +534,7 @@ const managerConfigStr = JSON.stringify({
                     volume: state.volume,
                     isMuted: state.isMuted
                 });
+                emit('fm:status', { status: 'ready' });
 
                 loadTrack(startIndex, false);
             } else {
@@ -445,6 +550,7 @@ const managerConfigStr = JSON.stringify({
         } catch (e) {
             console.error('Music Manager init error:', e);
             state.initialized = true;
+            state.error = config.i18n.error;
             emit('fm:init', {
                 playlist: [],
                 playMode: state.playMode,
@@ -452,6 +558,7 @@ const managerConfigStr = JSON.stringify({
                 isMuted: state.isMuted
             });
             emit('fm:error', { message: config.i18n.error });
+            emit('fm:status', { status: 'error' });
         } finally {
             state.initializing = false;
         }
@@ -460,6 +567,12 @@ const managerConfigStr = JSON.stringify({
     // ── Public API ───────────────────────────────────────────
     window.__fireflyMusic = {
         init: init,
+        // 加载失败后手动重试（会绕过「已初始化」判断，清空后重新拉歌单）
+        retry: function () {
+            state.initialized = false;
+            state.error = null;
+            return init(true);
+        },
         getState: function () {
             var track = state.playlist[state.currentIndex] || null;
             return {
