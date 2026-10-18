@@ -9,7 +9,7 @@
 	"postListLayout": "grid",
 	"overlayOpacity": 1,
 	"overlayBlur": 10,
-	"overlayCardOpacity": 0.61,
+	"overlayCardOpacity": 0.7,
 	"wavesEnabled": true,
 	"gradientEnabled": true,
 	"sakuraEnabled": false,
