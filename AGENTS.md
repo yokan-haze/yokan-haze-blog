@@ -149,3 +149,20 @@ Do not commit secrets, tokens, or service keys in config files. Keep deployment-
 反面案例（都发生过，不要再犯）：
 - 曾经把 1080p 视频压到更小以"省流量"，被站长否决："不要降低我壁纸画质"。
 - 曾建议"60fps 降到 30fps 可以减半体积"，同样被否决。
+
+## 站内设置后台启用后的一条硬规矩（2026-10-18）
+
+`src/data/siteSettings.json` 现在是**站长自己维护**的文件（通过 /admin/ 保存）。
+
+**本地这份副本会过期。** 每次要提交任何改动之前，必须先把它从远端同步下来，
+否则会用旧的本地副本覆盖掉站长刚保存的设置（真实风险：本地曾停留在
+theme=dark / cardOpacity=0.28，而线上已是 theme=light / cardOpacity=0.61）。
+
+同步命令（PowerShell）：
+
+    gh api repos/yokan-haze/yokan-haze-blog/contents/src/data/siteSettings.json?ref=main
+
+读出 base64 -> 解码 -> 直接写回本地文件。
+
+另外：**外观类需求优先让站长自己在 /admin/ 里调并保存**，不要再由我改代码里的默认值 ——
+他那份才是唯一真源。
