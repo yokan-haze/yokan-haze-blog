@@ -32,16 +32,18 @@ const pinnedCount = allPosts.filter((post) => post.data.pinned === true).length;
 <MainGridLayout title="本子" description="我写过的所有文章，都在这里。">
   <div class="card-base p-5 mb-4">
     <div class="text-2xl font-bold text-90 mb-1">本子</div>
-    <div class="text-sm text-75">
-      所有文章都记在这里，共 <b>{total}</b> 篇（其中置顶 <b>{pinnedCount}</b> 篇）。
-      首页只放置顶的 4 篇，其余都在这个本子里。
+    <div class="text-sm text-75 leading-7 border-l-2 border-(--primary)/35 pl-3">
+      翻开这一册，都是写下来的日子。
+    </div>
+    <div class="text-xs text-50 mt-1.5">
+      共 <b>{total}</b> 篇 · 置顶 <b>{pinnedCount}</b> 篇
     </div>
   </div>
 
   {
     total === 0 ? (
       <div class="card-base p-6 text-center text-sm text-75">
-        本子还是空的 —— 去 <a href="/admin/edit/" class="text-(--primary)">写文章</a> 写第一篇吧。
+        这一册还空着，等第一笔墨迹 —— 去 <a href="/admin/edit/" class="text-(--primary)">写文章</a> 落笔吧。
       </div>
     ) : (
       <PostPage page={page} />
