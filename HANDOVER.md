@@ -101,6 +101,62 @@
 - **怎么验的**：`ff-api-test.mts`（会话工作区里）用假 GitHub API 直接跑 `onRequestPost` /
   `onRequestGet`，11 组断言全过：字段保留、空值删除、`published` 裸日期、401、块状 tags 读成数组。
 
+## 二·补二：2026-10-18 深夜这一轮（首页只放置顶 4 篇 / 本子 / 上传）
+
+站长原话四件事：
+
+### 1. 「文章」下拉里加「本子」——把所有文章都记进去
+
+- 新页面 `src/pages/notebook.astro` → `/notebook/`，导航 `文章 → 本子`（`navBarConfig.ts` 的
+  `LinkPresets.Notebook`，图标 `material-symbols:menu-book-rounded`）。
+- 内容：按年份分组、按发布日期倒序、**全量**（不受置顶影响），置顶的多一个「置顶」小标。
+- 为什么必须有它：首页现在只放置顶的 4 篇，没置顶的文章从首页看不到。
+
+### 2. 首页只留 4 篇，而且必须是置顶的
+
+- `src/pages/[...page].astro` 的 `getStaticPaths`：`getSortedPosts()`（置顶优先、再按日期）
+  → `filter(pinned)` → `slice(0, 4)` → `paginate(..., { pageSize: 4 })`。
+- 结果：**取消置顶 = 文章从首页消失**；把 5 篇以上置顶时只显示最新的 4 篇；
+  `/page/2/` 这类分页不再生成；一篇置顶都没有时首页显示「去本子看全部」的提示卡。
+- 实测：造 4 篇临时置顶（共 5 篇置顶）→ 首页正好 4 张卡、最早那篇被挤出列表；删掉临时文件还原。
+
+### 3. 写文章里要有「置顶」
+
+- 编辑器 `/admin/edit/` 加了 `#pinned` 复选框（挨着「存为草稿」，文案带「首页只放置顶的 4 篇」）；
+  文章页的就地编辑面板也加了 `#pe-pinned`。
+- `functions/api/content.ts` 的 `FIELDS.posts` 补了 `pinned`，否则服务端白名单会把值丢掉。
+- 实测：勾选/取消 → 发布 → 抓 `POST /api/content` 的 payload 确认 `data.pinned` 正确；
+  接口层直接跑处理器：写入 `pinned: true`、取消写成 `pinned: false`、不会出现两条 `pinned`。
+
+### 4. 写文章里要能上传图片和视频
+
+- 新接口 `functions/api/upload.ts`：`POST /api/upload`，body = `{ filename, type, data(base64) }`。
+  - 走 **Git Data API**（blob → tree → commit → 更新 ref），写进 `public/uploads/`，
+    构建后公开在 `/uploads/xxx`；和原来的 `birds-fly.webp` 同一个目录。
+  - 单文件上限 **25 MB**；只收图片（png/jpg/webp/gif/avif/svg）与视频（mp4/webm/mov/m4v/ogg）。
+  - 文件名 = UTC 时间戳 + 纯 ASCII slug（汉字会被丢掉、落到 `media`）—— 因为文件名会进正文 URL。
+  - 分支被并发推进（PATCH 422）会**重读 head 重试**，否则第二个上传会丢文件。
+  - **每次上传 = 一次提交 = 一次重新构建（约 1 分钟）**，所以编辑器提示是「约 1 分钟后生效」。
+- 编辑器 UI：封面行（`#image` + 「上传封面图」）、正文上方「上传图片 / 上传视频」，
+  上传成功后：封面图直接填进 `#image`；图片插入 `![](url)`；视频插入
+  `<video src controls playsinline>`（Markdown 里的原生 HTML 会原样输出）。
+
+### 5. 「文章」下拉里的「标签」删掉
+
+- `navBarConfig.ts` 里注释掉了 `LinkPresets.Tags`，下拉现在是：本子 / 归档 / 分类 / 系列。
+- `/tags/` 页面本身还在（老链接不会 404），只是导航栏不再给入口。
+- **注意**：文章卡片上的 `#随笔` 这类标签仍然会显示（站长只说了图 1 的菜单项）。
+  如果他也要去掉卡片上的标签，改 `PostCard.astro` 的 tag 区块与前台的 `PostMeta`。
+
+### 这一轮的验证脚本（都在会话工作区 `~/.dsh/browser-sessions`）
+
+- `ff-api-test.mts`：直接跑 `content.ts`/`file.ts` 处理器，30 条断言（含 pinned 写入/取消）。
+- `ff-upload-test.mts`：直接跑 `upload.ts`，11 条断言（blob 内容、tree 路径、422 重试、类型/空内容/401）。
+- `verify-features.mjs`：headless Chrome 真点编辑器 —— DataTransfer 造 File 触发上传、
+  检查插入的 Markdown/HTML、封面回填、pinned 进 payload。
+- `test-home-limit.mjs`：临时造 5 篇置顶验证「首页正好 4 篇」。
+- `check-build-features.mjs`：构建产物里首页/本子/导航/编辑器的关键点。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）

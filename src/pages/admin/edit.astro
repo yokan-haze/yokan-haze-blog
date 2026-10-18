@@ -74,7 +74,36 @@ const TYPES = [
           <input id="draft" type="checkbox" />
           存为草稿
         </label>
+        <label class="text-sm text-75 flex items-center gap-1">
+          <input id="pinned" type="checkbox" />
+          置顶（首页只放置顶的 4 篇）
+        </label>
       </div>
+
+      <!-- 封面：上传图片后点「用作封面」会把地址填到这里；也可以直接贴已有地址 -->
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-75 w-16">封面</label>
+        <input
+          id="image"
+          type="text"
+          placeholder="/uploads/xxx.jpg（可留空）"
+          class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm flex-1 min-w-64"
+        />
+        <button id="pickCover" type="button" class="btn-regular rounded-lg px-3 py-2 text-sm">上传封面图</button>
+        <input id="coverFile" type="file" accept="image/*" class="hidden" />
+      </div>
+
+      <!-- 正文：先上传，再自动插入到光标处 -->
+      <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-sm text-75 w-16">插入</label>
+        <button id="pickImage" type="button" class="btn-regular rounded-lg px-3 py-2 text-sm">上传图片</button>
+        <button id="pickVideo" type="button" class="btn-regular rounded-lg px-3 py-2 text-sm">上传视频</button>
+        <span class="text-xs text-50">图片 ≤ 25MB、视频 ≤ 25MB；上传会提交进仓库并触发一次构建（约 1 分钟）</span>
+        <input id="imageFile" type="file" accept="image/*" class="hidden" />
+        <input id="videoFile" type="file" accept="video/*" class="hidden" />
+      </div>
+
+      <div id="uploadState" class="text-xs text-75 leading-6"></div>
 
       <div class="flex gap-2 items-start">
         <label class="text-sm text-75 w-16 pt-2">正文</label>

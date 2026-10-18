@@ -1,0 +1,83 @@
+---
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { getSortedPostsList } from "@/utils/content-utils";
+import { getPostUrlBySlug } from "@/utils/url-utils";
+
+// 本子 —— 站长 2026-10-18 要的：「在文章里建一个叫本子的按钮，把所有文章都记进去」。
+//
+// 为什么需要它：首页现在只放置顶的 4 篇，没置顶的文章从首页看不到，
+// 所以必须有一个「全量」的入口。这一页不做筛选、不做分页，就是老老实实
+// 按年份把每一篇都列出来。
+//
+// 排序按发布日期倒序（不受置顶影响），置顶的文章多一个小标记 ——
+// 这里要的是「记录」，不是「推荐」。
+
+const allPosts = await getSortedPostsList();
+const posts = allPosts
+	.slice()
+	.sort((a, b) => b.data.published.getTime() - a.data.published.getTime());
+
+const byYear = new Map<number, typeof posts>();
+for (const post of posts) {
+	const year = post.data.published.getFullYear();
+	if (!byYear.has(year)) byYear.set(year, []);
+	byYear.get(year)?.push(post);
+}
+const groups = Array.from(byYear.entries())
+	.sort((a, b) => b[0] - a[0])
+	.map(([year, items]) => ({ year, items }));
+
+const pinnedCount = posts.filter((post) => post.data.pinned === true).length;
+
+function formatDate(date: Date): string {
+	const month = (date.getMonth() + 1).toString().padStart(2, "0");
+	const day = date.getDate().toString().padStart(2, "0");
+	return `${date.getFullYear()}-${month}-${day}`;
+}
+---
+
+<MainGridLayout title="本子" description="我写过的所有文章，都在这里。">
+  <div class="card-base p-5 mb-4">
+    <div class="text-2xl font-bold text-90 mb-1">本子</div>
+    <div class="text-sm text-75">
+      所有文章都记在这里，共 <b>{posts.length}</b> 篇（其中置顶 <b>{pinnedCount}</b> 篇）。
+      首页只放置顶的 4 篇，其余都在这个本子里。
+    </div>
+  </div>
+
+  <div class="card-base p-5">
+    {
+      posts.length === 0 && (
+        <div class="text-sm text-75 py-6 text-center">本子还是空的 —— 去 /admin/edit/ 写第一篇吧。</div>
+      )
+    }
+
+    {groups.map(({ year, items }) => (
+      <div class="mb-5 last:mb-0">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-sm font-bold text-90">{year}</span>
+          <span class="text-xs text-50">{items.length} 篇</span>
+          <span class="flex-1 h-px bg-(--line-divider)"></span>
+        </div>
+        <div class="flex flex-col">
+          {items.map((post) => (
+            <a
+              href={getPostUrlBySlug(post.id)}
+              class="group flex items-baseline gap-3 py-2 border-b border-(--line-divider) last:border-0"
+            >
+              <span class="text-xs text-50 font-mono shrink-0 tabular-nums">{formatDate(post.data.published)}</span>
+              <span class="text-sm text-90 group-hover:text-(--primary) transition-colors flex-1 min-w-0 truncate">
+                {post.data.title || "(无标题)"}
+              </span>
+              {post.data.pinned && (
+                <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-(--primary)/12 text-(--primary) shrink-0">
+                  置顶
+                </span>
+              )}
+            </a>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+</MainGridLayout>

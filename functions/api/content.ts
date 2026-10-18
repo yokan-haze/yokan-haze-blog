@@ -30,8 +30,9 @@ const TYPES: Record<string, string> = {
 };
 
 // 每种类型允许的 frontmatter 字段（同时也是写入顺序）
+// pinned 是 2026-10-18 加的：首页只放置顶的 4 篇，所以编辑器必须能改它。
 const FIELDS: Record<string, string[]> = {
-	posts: ["title", "published", "description", "image", "tags", "category", "draft"],
+	posts: ["title", "published", "description", "image", "tags", "category", "draft", "pinned"],
 	dynamic: ["published", "content"],
 	projects: ["title", "description", "image", "link", "order", "draft"],
 };

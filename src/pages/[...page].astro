@@ -11,9 +11,14 @@ import "@/styles/banner-home.css";
 import { getSortedPosts } from "@/utils/content-utils";
 export const getStaticPaths = (async ({ paginate }) => {
 	const allBlogPosts = await getSortedPosts();
-	// 使用配置中的文章数量
-	const pageSize = siteConfig.pagination.postsPerPage;
-	return paginate(allBlogPosts, { pageSize });
+	// 站长 2026-10-18 要求：首页只放置顶文章，最多 4 篇。
+	// 「取消置顶的文章不会出现在主页」—— 它们仍然在 /notebook/（本子）与 /archive/ 里。
+	// getSortedPosts() 已经把置顶的排在最前面，这里 filter+slice 拿到最新的 4 篇置顶。
+	const HOME_PINNED_LIMIT = 4;
+	const homePosts = allBlogPosts
+		.filter((post) => post.data.pinned === true)
+		.slice(0, HOME_PINNED_LIMIT);
+	return paginate(homePosts, { pageSize: HOME_PINNED_LIMIT });
 }) satisfies GetStaticPaths;
 // https://github.com/withastro/astro/issues/6507#issuecomment-1489916992
 
@@ -32,6 +37,14 @@ const heading =
   {/* 首页顶部：头像 + 名字 + 签名 + 统计。站长要求头像尽量大。 */}
   {/* {page.currentPage === 1 && <ProfileHero slot="above-grid" />} */}
   <PostPage page={page} />
+  {
+    len === 0 && (
+      <div class="card-base p-6 text-center text-sm text-75">
+        首页只放置顶的文章，现在还没有置顶的。全部文章在{" "}
+        <a href="/notebook/" class="text-(--primary)">本子</a> 里。
+      </div>
+    )
+  }
   {
     page.total > page.size && (
       <Pagination

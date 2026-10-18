@@ -324,6 +324,16 @@ function initEditPage(): void {
 	const bodyEl = byId<HTMLTextAreaElement>("body");
 	const loadState = byId("loadState");
 	const reloadBtn = byId<HTMLButtonElement>("reload");
+	// 2026-10-18 新增：置顶开关、封面字段、图片/视频上传
+	const pinnedEl = byId<HTMLInputElement>("pinned");
+	const imageEl = byId<HTMLInputElement>("image");
+	const coverFile = byId<HTMLInputElement>("coverFile");
+	const pickCover = byId<HTMLButtonElement>("pickCover");
+	const imageFile = byId<HTMLInputElement>("imageFile");
+	const videoFile = byId<HTMLInputElement>("videoFile");
+	const pickImage = byId<HTMLButtonElement>("pickImage");
+	const pickVideo = byId<HTMLButtonElement>("pickVideo");
+	const uploadState = byId("uploadState");
 	if (!pwEl || !outEl || !typeEl || !filenameEl || !titleEl || !descriptionEl) return;
 	if (!tagsEl || !categoryEl || !draftEl || !bodyEl || !loadState) return;
 
@@ -367,6 +377,8 @@ function initEditPage(): void {
 			tagsEl.value = Array.isArray(data.tags) ? data.tags.join(", ") : String(data.tags ?? "");
 			categoryEl.value = String(data.category ?? "");
 			draftEl.checked = data.draft === true;
+			if (pinnedEl) pinnedEl.checked = data.pinned === true;
+			if (imageEl) imageEl.value = String(data.image ?? "");
 			bodyEl.value = String(res.body.body ?? "");
 			loadState.textContent = `✓ 已读入 ${file} —— 改完点发布覆盖（历史在 Git 里）`;
 		} catch (e) {
@@ -408,6 +420,9 @@ function initEditPage(): void {
 							tags,
 							category: categoryEl.value.trim(),
 							draft,
+							// 首页只放置顶的 4 篇，所以这里必须能把置顶写回去
+							pinned: pinnedEl?.checked === true,
+							image: imageEl?.value.trim() ?? "",
 						};
 
 			outEl.textContent = "提交中……";
@@ -428,6 +443,98 @@ function initEditPage(): void {
 			}
 		})();
 	});
+
+	// ── 上传图片 / 视频 ───────────────────────────────────────
+	// 上传会提交进仓库（public/uploads/）并触发一次构建，所以提示写的是
+	// 「约 1 分钟后链接才能打开」。上传成功后：
+	//   · 封面图 → 直接填进「封面」输入框
+	//   · 正文图片 → 在光标处插入 Markdown 图片
+	//   · 视频 → 在光标处插入 <video> 标签（Markdown 里的原生 HTML 会被原样输出）
+	const uploadStateEl = uploadState ?? outEl;
+	const setUploadState = (text: string): void => {
+		uploadStateEl.textContent = text;
+	};
+
+	const fileToBase64 = (file: File): Promise<string> =>
+		new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => {
+				const dataUrl = String(reader.result ?? "");
+				resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
+			};
+			reader.onerror = () => reject(reader.error ?? new Error("读取文件失败"));
+			reader.readAsDataURL(file);
+		});
+
+	const insertAtCursor = (snippet: string): void => {
+		const start = bodyEl.selectionStart ?? bodyEl.value.length;
+		const end = bodyEl.selectionEnd ?? start;
+		const before = bodyEl.value.slice(0, start);
+		const after = bodyEl.value.slice(end);
+		const block = `${before === "" || before.endsWith("\n") ? "" : "\n"}${snippet}\n`;
+		bodyEl.value = before + block + after;
+		const pos = (before + block).length;
+		bodyEl.focus();
+		bodyEl.setSelectionRange(pos, pos);
+	};
+
+	const uploadFile = async (file: File, kind: "cover" | "image" | "video"): Promise<void> => {
+		const password = pwEl.value.trim() || storedPassword();
+		if (!password) {
+			setUploadState("先填后台密码，再上传（上传也要鉴权）");
+			return;
+		}
+		rememberPassword(password);
+		setUploadState(`正在上传 ${file.name}（${(file.size / 1048576).toFixed(1)} MB）……`);
+		try {
+			const base64 = await fileToBase64(file);
+			const res = await postJson("/api/upload", password, {
+				filename: file.name,
+				type: file.type,
+				data: base64,
+			});
+			if (res.body.ok !== true) {
+				setUploadState(`✗ 上传失败：${errText(res.body, res.status)}`);
+				return;
+			}
+			const url = String(res.body.url ?? "");
+			const alt = file.name.replace(/\.[^.]+$/, "");
+			if (kind === "cover") {
+				if (imageEl) imageEl.value = url;
+				setUploadState(`✓ 已上传并设为封面：${url}（约 1 分钟后生效）`);
+				return;
+			}
+			if (kind === "image") {
+				insertAtCursor(`![${alt}](${url})`);
+			} else {
+				insertAtCursor(
+					`<video src="${url}" controls playsinline preload="metadata" style="max-width:100%;border-radius:0.75rem"></video>`,
+				);
+			}
+			setUploadState(`✓ 已上传并插入正文：${url}（约 1 分钟后生效）`);
+		} catch (e) {
+			setUploadState(`✗ 上传失败：${message(e)}`);
+		}
+	};
+
+	const wireUpload = (
+		btn: HTMLButtonElement | null,
+		input: HTMLInputElement | null,
+		kind: "cover" | "image" | "video",
+	): void => {
+		if (!btn || !input) return;
+		btn.addEventListener("click", () => input.click());
+		input.addEventListener("change", () => {
+			const file = input.files?.[0];
+			// 清空，避免选同一个文件不触发 change
+			input.value = "";
+			if (file) void uploadFile(file, kind);
+		});
+	};
+
+	wireUpload(pickCover, coverFile, "cover");
+	wireUpload(pickImage, imageFile, "image");
+	wireUpload(pickVideo, videoFile, "video");
 
 	reloadBtn?.addEventListener("click", () => void loadExisting());
 
@@ -467,6 +574,7 @@ function initPostInlineEditor(): void {
 	const tagsEl = byId<HTMLInputElement>("pe-tags");
 	const categoryEl = byId<HTMLInputElement>("pe-category");
 	const draftEl = byId<HTMLInputElement>("pe-draft");
+	const pinnedEl = byId<HTMLInputElement>("pe-pinned");
 	const bodyEl = byId<HTMLTextAreaElement>("pe-body");
 	const pwEl = byId<HTMLInputElement>("pe-pw");
 	const statusEl = byId("pe-status");
@@ -535,6 +643,7 @@ function initPostInlineEditor(): void {
 			tagsEl.value = Array.isArray(data.tags) ? data.tags.join(", ") : String(data.tags ?? "");
 			categoryEl.value = String(data.category ?? "");
 			draftEl.checked = data.draft === true;
+			if (pinnedEl) pinnedEl.checked = data.pinned === true;
 			bodyEl.value = String(res.body.body ?? "");
 			saveBtn.disabled = false;
 			setStatus("✓ 已读入原文 —— 改完点「保存到仓库」（历史在 Git 里）");
@@ -571,14 +680,16 @@ function initPostInlineEditor(): void {
 					.filter(Boolean)
 			: [];
 
-		// 只提交这里管得着的字段。封面(image)、置顶(pinned)、评论(comment)、
-		// 密码(password)、系列(series) 这些由服务端从原文里原样保留。
+		// 只提交这里管得着的字段。封面(image)、评论(comment)、密码(password)、
+		// 系列(series) 这些由服务端从原文里原样保留。
 		const data: Json = {
 			title,
 			description: descriptionEl.value.trim(),
 			tags,
 			category: categoryEl.value.trim(),
 			draft: draftEl.checked,
+			// 首页只放置顶的 4 篇 —— 文章页这里也要能置顶/取消置顶
+			pinned: pinnedEl?.checked === true,
 		};
 		const published = state.data.published;
 		if (typeof published === "string" && published) data.published = published;

@@ -22,14 +22,18 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 		url: "#",
 		icon: "material-symbols:article",
 		children: [
+			// 本子：站长要的「把所有文章都记进去」的地方（首页只放置顶的 4 篇）
+			LinkPresets.Notebook,
+
 			// 归档
 			LinkPresets.Archive,
 
 			// 分类
 			LinkPresets.Categories,
 
-			// 标签
-			LinkPresets.Tags,
+			// 标签：站长 2026-10-18 说「不需要了」，从菜单里移除。
+			// /tags/ 页面本身还在（老链接不会 404），只是导航栏不再给入口。
+			// LinkPresets.Tags,
 
 			// 系列
 			LinkPresets.Series,
@@ -141,6 +145,12 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		name: "归档",
 		url: "/archive/",
 		icon: "material-symbols:archive",
+	},
+	// 本子：全量文章列表（首页只放置顶的 4 篇，其余都在这里）
+	Notebook: {
+		name: "本子",
+		url: "/notebook/",
+		icon: "material-symbols:menu-book-rounded",
 	},
 	Categories: {
 		name: "分类",
