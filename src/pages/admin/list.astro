@@ -78,7 +78,8 @@ const TYPES = [
             html +=
               "<tr class='border-t border-(--line-divider)'>" +
               "<td class='py-2 pr-4 text-90'>" + esc(f.name) + "</td>" +
-              "<td class='py-2 text-right'>" +
+              "<td class='py-2 text-right whitespace-nowrap'>" +
+              "<a href='/admin/edit/?file=" + encodeURIComponent(f.path) + "' class='btn-regular rounded-lg px-3 py-1 text-xs mr-2'>编辑</a>" +
               "<button data-path='" + esc(f.path) + "' class='del btn-regular rounded-lg px-3 py-1 text-xs'>删除</button>" +
               "</td></tr>";
           }
