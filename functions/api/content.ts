@@ -70,11 +70,24 @@ function yamlValue(v: unknown): string {
 }
 
 function buildFile(type: string, data: Record<string, unknown>, body: string): string {
+	// published 是主题 schema 的必填项，缺了会让整个构建失败
+	// （真实事故：站长试用编辑器发了一篇没带 published 的文章，
+	//   CI 报 InvalidContentEntryDataError，整站构建失败）。
+	// 这里统一补当天日期，且按 YAML 日期写法输出 —— 不能加引号，否则会变成字符串。
+	if (type !== "dynamic" && !data.published) {
+		data.published = new Date().toISOString().slice(0, 10);
+	}
+
 	const order = FIELDS[type];
 	const lines: string[] = ["---"];
 	for (const k of order) {
 		const v = data[k];
 		if (v === undefined || v === null || v === "") continue;
+		// published 用裸日期（YAML 里是 date 类型），其余走 yamlValue
+		if (k === "published" && typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+			lines.push(`${k}: ${v}`);
+			continue;
+		}
 		lines.push(`${k}: ${yamlValue(v)}`);
 	}
 	lines.push("---", "");
