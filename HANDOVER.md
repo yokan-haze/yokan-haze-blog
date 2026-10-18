@@ -107,10 +107,14 @@
 
 ### 1. 「文章」下拉里加「本子」——把所有文章都记进去
 
-- 新页面 `src/pages/notebook.astro` → `/notebook/`，导航 `文章 → 本子`（`navBarConfig.ts` 的
-  `LinkPresets.Notebook`，图标 `material-symbols:menu-book-rounded`）。
-- 内容：按年份分组、按发布日期倒序、**全量**（不受置顶影响），置顶的多一个「置顶」小标。
-- 为什么必须有它：首页现在只放置顶的 4 篇，没置顶的文章从首页看不到。
+- 页面：`src/pages/notebook/[...page].astro` → `/notebook/`（超过一页时 `/notebook/2/` …）。
+  导航在 `navBarConfig.ts` 的 `LinkPresets.Notebook`，图标 `material-symbols:menu-book-rounded`。
+- **形态是「文章卡片」，不是文字列表**（站长第一版反馈：「本子里的内容是以卡片的形式，而不是这样，
+  你这个和归档重复了」）。实现上直接复用 `PostPage` / `PostCard`：网格/列表切换、封面、摘要、
+  置顶标记全都跟首页一致，只是**不过滤置顶、全量**。
+- 排序同首页（置顶优先 → 发布日期倒序，见 `getSortedPosts()`），页头显示「共 N 篇 / 置顶 M 篇」。
+- 为什么必须有它：首页只放置顶的 4 篇，没置顶的文章从首页看不到；而归档是按年罗列的文字列表，
+  不是卡片，两者不要做成一样。
 
 ### 2. 首页只留 4 篇，而且必须是置顶的
 

@@ -1,0 +1,60 @@
+---
+import type { GetStaticPaths } from "astro";
+import Pagination from "@/components/common/Pagination.astro";
+import PostPage from "@/components/layout/PostPage.astro";
+import { siteConfig } from "@/config";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { getSortedPosts } from "@/utils/content-utils";
+
+// 本子 —— 站长 2026-10-18 要的「把全部文章都记进去」的地方。
+//
+// 为什么需要它：首页只放置顶的 4 篇，没置顶的文章从首页看不到。
+//
+// 形态：和首页一样的**文章卡片**（复用 PostPage / PostCard，网格/列表切换、
+// 置顶标记、封面、摘要全都有）。站长看过第一版后明确说：「本子里的内容是以卡片
+// 的形式，而不是这样，你这个和归档重复了」—— 所以不要做成归档那种按年罗列的文字列表。
+//
+// 排序跟首页一致（置顶优先，再按发布日期倒序，见 getSortedPosts），
+// 但**不做置顶过滤**：所有文章都在这里。超过一页会自动分页（/notebook/2/ …）。
+export const getStaticPaths = (async ({ paginate }) => {
+	const allPosts = await getSortedPosts();
+	return paginate(allPosts, { pageSize: siteConfig.pagination.postsPerPage });
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+
+// 页头想要「全站共 N 篇」的统计，所以再取一次全量（构建期，成本可忽略）
+const allPosts = await getSortedPosts();
+const total = allPosts.length;
+const pinnedCount = allPosts.filter((post) => post.data.pinned === true).length;
+---
+
+<MainGridLayout title="本子" description="我写过的所有文章，都在这里。">
+  <div class="card-base p-5 mb-4">
+    <div class="text-2xl font-bold text-90 mb-1">本子</div>
+    <div class="text-sm text-75">
+      所有文章都记在这里，共 <b>{total}</b> 篇（其中置顶 <b>{pinnedCount}</b> 篇）。
+      首页只放置顶的 4 篇，其余都在这个本子里。
+    </div>
+  </div>
+
+  {
+    total === 0 ? (
+      <div class="card-base p-6 text-center text-sm text-75">
+        本子还是空的 —— 去 <a href="/admin/edit/" class="text-(--primary)">写文章</a> 写第一篇吧。
+      </div>
+    ) : (
+      <PostPage page={page} />
+    )
+  }
+
+  {
+    page.total > page.size && (
+      <Pagination
+        class="mx-auto onload-animation"
+        page={page}
+        style={`animation-delay: calc(var(--content-delay) + ${page.data.length * 50}ms)`}
+      />
+    )
+  }
+</MainGridLayout>
