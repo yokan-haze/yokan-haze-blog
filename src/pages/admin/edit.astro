@@ -129,5 +129,45 @@ const TYPES = [
         })
         .catch(function (e) { out.textContent = "✗ 请求失败：" + e; });
     });
+
+    // ── 修改已有文章：URL 带 ?file= 时自动读回并填表 ──
+    (function tryLoadExisting() {
+      var file = new URLSearchParams(location.search).get("file");
+      var state = document.getElementById("loadState");
+      if (!file || !state) return;
+
+      var parts = file.split("/");
+      document.getElementById("filename").value = parts[parts.length - 1].replace(/\.md$/, "");
+      if (file.indexOf("/dynamic/") >= 0) document.getElementById("type").value = "dynamic";
+      else if (file.indexOf("/projects/") >= 0) document.getElementById("type").value = "projects";
+      else document.getElementById("type").value = "posts";
+
+      var password = localStorage.getItem(PW_KEY);
+      if (!password) {
+        state.textContent = "要修改的是 " + file + " —— 先在下面填密码并点发布区任意处，再刷新本页即可读出内容";
+        return;
+      }
+
+      state.textContent = "正在读取 " + file + " ……";
+      fetch("/api/file?path=" + encodeURIComponent(file), {
+        headers: { "x-admin-password": password },
+      })
+        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+        .then(function (res) {
+          if (!res.j || !res.j.ok) {
+            state.textContent = "读取失败：" + ((res.j && res.j.error) || ("HTTP " + res.s));
+            return;
+          }
+          var d = res.j.data || {};
+          document.getElementById("title").value = d.title || "";
+          document.getElementById("description").value = d.description || "";
+          document.getElementById("tags").value = Array.isArray(d.tags) ? d.tags.join(", ") : (d.tags || "");
+          document.getElementById("category").value = d.category || "";
+          document.getElementById("draft").checked = d.draft === true;
+          document.getElementById("body").value = res.j.body || "";
+          state.textContent = "✓ 已读入 " + file + " —— 改完点发布覆盖（历史在 Git 里）";
+        })
+        .catch(function (e) { state.textContent = "读取失败：" + e; });
+    })();
   })();
 </script>
