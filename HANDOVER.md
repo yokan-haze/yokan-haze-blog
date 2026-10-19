@@ -405,6 +405,33 @@ node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 
 
 上线 commit：`e37a2dd`、`f04bf17`（远端），工作流均 success。
 
+#### 追加：位置从右下角挪到个人卡片（2026-10-19 深夜）
+
+站长：「他在右下角不太好看，我想换一个地方。而且我希望他可以固定，不要我滑动他也跟着滑动」
+→ 问了三个候选位置，站长选了 **C：放进左侧栏个人卡片下面**。
+
+先说明一个测量结果（免得以后又被绕进去）：原来那个浮动胶囊**本来就是 `position: fixed`**，
+在本子页滚 600px 它的 `top` 一点没变（735→735）。所以「跟着滑动」如果指的是
+「希望它跟着页面走、滚过去就看不见」，那现在这个位置才对 —— 现在它确实随页面滚动
+（线上实测滚动 600px 后 `top` 从 1371 变到 771）。
+
+- `src/components/widget/Profile.astro`：社交图标那一行下面加「落笔」入口
+  （`btn-regular` 全宽按钮 + `ink-pen` 图标，和卡片里其它按钮同一套）
+  - ⚠ **用 class `.write-entry` 不要用 id**：移动端会渲染两份个人卡片
+    （左侧栏那份隐藏 + `mobileBottomComponents` 底部那份可见），id 会撞，
+    `getElementById` 只能拿到隐藏的那份
+- `src/layouts/MainGridLayout.astro`：不再渲染浮动按钮；
+  `src/components/common/WriteFab.astro` 已删除（要回滚看 git 历史）
+- `src/utils/write-fab.ts`：`initWriteFabVisibility` → `initWriteEntryVisibility`，
+  按 class 遍历所有入口做显隐兜底（移动端底部那份不在 swup 主容器里，切页可能残留）
+- 显隐规则不变：首页 / 本子（含分页）才有；归档、标签、文章页、`/admin/` 都没有
+
+验证：`astro check` 0 errors、`pnpm build` exit 0；
+`verify-write-entry.mjs` 16 条全过（桌面在个人卡片里、static 不悬浮、宽度撑满、其它页没有、
+本子有、手机是底部那份可见且不溢出、无报错）；
+`live-check-write-entry.mjs` 10 条全过（5 个页面 HTML 有无入口、线上渲染位置/流内、
+旧浮动按钮消失、滚动时随页面移动）。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
