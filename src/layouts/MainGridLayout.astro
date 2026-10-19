@@ -24,7 +24,6 @@ import { getEffectiveSidebarState } from "@/utils/sidebar-effective-utils";
 import Layout from "./Layout.astro";
 
 import "@/styles/expressive-code.css";
-import { shouldShowWriteFab } from "@/utils/write-fab";
 
 interface Props {
 	title?: string;
@@ -73,9 +72,6 @@ const isHomePageCheck = isHomePage(Astro.url.pathname);
 const isPostPage = !!postSlug;
 const shouldRenderCategoryBar = !!siteConfig.categoryBar;
 const navbarWidthFull = siteConfig.navbar.widthFull ?? false;
-// 「落笔」写作入口只在首页和本子出现（站长 2026-10-19 要求），其它页面连 DOM 都不渲染。
-// 软导航时由 src/utils/write-fab.ts 补一刀（这个按钮在 swup 容器之外，切页不会自动换掉）。
-const showWriteFab = shouldShowWriteFab(Astro.url.pathname);
 
 const banner = getBannerVisibilityState({
 	isHomePage: isHomePageCheck,

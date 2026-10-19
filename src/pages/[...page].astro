@@ -15,8 +15,14 @@ export const getStaticPaths = (async ({ paginate }) => {
 	// 「取消置顶的文章不会出现在主页」—— 它们仍然在 /notebook/（本子）与 /archive/ 里。
 	// getSortedPosts() 已经把置顶的排在最前面，这里 filter+slice 拿到最新的 4 篇置顶。
 	const HOME_PINNED_LIMIT = 4;
+	// 站长 2026-10-19 要求：「第一个置顶的排在最前面，依次往后」——
+	// 也就是按发布日期**由旧到新**（最早写的在左/前），不是默认的最新在前。
 	const homePosts = allBlogPosts
 		.filter((post) => post.data.pinned === true)
+		.sort(
+			(a, b) =>
+				new Date(a.data.published).getTime() - new Date(b.data.published).getTime(),
+		)
 		.slice(0, HOME_PINNED_LIMIT);
 	return paginate(homePosts, { pageSize: HOME_PINNED_LIMIT });
 }) satisfies GetStaticPaths;
@@ -36,7 +42,7 @@ const heading =
 <MainGridLayout heading={heading}>
   {/* 首页顶部：头像 + 名字 + 签名 + 统计。站长要求头像尽量大。 */}
   {/* {page.currentPage === 1 && <ProfileHero slot="above-grid" />} */}
-  <PostPage page={page} />
+  <PostPage page={page} writeEntry />
   {
     len === 0 && (
       <div class="card-base p-6 text-center text-sm text-75">

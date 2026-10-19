@@ -46,7 +46,7 @@ const pinnedCount = allPosts.filter((post) => post.data.pinned === true).length;
         这一册还空着，等第一笔墨迹 —— 去 <a href="/admin/edit/" class="text-(--primary)">写文章</a> 落笔吧。
       </div>
     ) : (
-      <PostPage page={page} />
+      <PostPage page={page} writeEntry />
     )
   }
 

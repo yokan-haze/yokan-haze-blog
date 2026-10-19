@@ -101,6 +101,56 @@ async function postBinary(url: string, password: string, file: File): Promise<Ap
 	return { status: response.status, body: await readJson(response) };
 }
 
+// ── 编辑器正文字号（站长 2026-10-19：「写正文时可以自己调节字号」）──
+// 两个编辑器共用一套：按钮带 data-font-step="±1"，文本框带 data-body-font，
+// 读数带 data-font-readout；值存 localStorage，下次打开还是这个字号。
+const BODY_FONT_KEY = "editorBodyFontSize";
+const BODY_FONT_DEFAULT = 15;
+const BODY_FONT_MIN = 12;
+const BODY_FONT_MAX = 26;
+
+function readBodyFontSize(): number {
+	try {
+		const raw = Number(localStorage.getItem(BODY_FONT_KEY));
+		if (Number.isFinite(raw) && raw >= BODY_FONT_MIN && raw <= BODY_FONT_MAX) return Math.round(raw);
+	} catch {
+		// 隐私模式读不到就用默认
+	}
+	return BODY_FONT_DEFAULT;
+}
+
+function applyBodyFontSize(px: number): void {
+	const size = Math.max(BODY_FONT_MIN, Math.min(BODY_FONT_MAX, Math.round(px)));
+	try {
+		localStorage.setItem(BODY_FONT_KEY, String(size));
+	} catch {
+		// 写不进去也不影响本次
+	}
+	for (const area of document.querySelectorAll<HTMLTextAreaElement>("textarea[data-body-font]")) {
+		area.style.fontSize = size + "px";
+	}
+	for (const readout of document.querySelectorAll<HTMLElement>("[data-font-readout]")) {
+		readout.textContent = size + "px";
+	}
+}
+
+function initBodyFontControls(): void {
+	for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-font-step]")) {
+		if (btn.dataset.fontBound === "1") return;
+	}
+	const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-font-step]"));
+	if (!buttons.length) return;
+	for (const btn of buttons) {
+		if (btn.dataset.fontBound === "1") continue;
+		btn.dataset.fontBound = "1";
+		btn.addEventListener("click", () => {
+			const step = Number(btn.dataset.fontStep ?? "0") || 0;
+			applyBodyFontSize(readBodyFontSize() + step);
+		});
+	}
+	applyBodyFontSize(readBodyFontSize());
+}
+
 // ── /admin/ 设置保存 ─────────────────────────────────────────
 
 function initSettingsPage(): void {
@@ -537,6 +587,15 @@ function initPostInlineEditor(): void {
 	const bodyEl = byId<HTMLTextAreaElement>("pe-body");
 	const pwEl = byId<HTMLInputElement>("pe-pw");
 	const statusEl = byId("pe-status");
+	// 2026-10-19 补：封面 + 正文插图（和「落笔」那页保持一致，站长反馈「编辑时没有封面」）
+	const imageEl = byId<HTMLInputElement>("pe-image");
+	const coverFile = byId<HTMLInputElement>("pe-coverFile");
+	const pickCover = byId<HTMLButtonElement>("pe-pickCover");
+	const imageFile = byId<HTMLInputElement>("pe-imageFile");
+	const videoFile = byId<HTMLInputElement>("pe-videoFile");
+	const pickImage = byId<HTMLButtonElement>("pe-pickImage");
+	const pickVideo = byId<HTMLButtonElement>("pe-pickVideo");
+	const uploadStateEl = byId("pe-uploadState");
 	const saveBtn = byId<HTMLButtonElement>("pe-save");
 	const reloadBtn = byId<HTMLButtonElement>("pe-reload");
 	const closeBtn = byId<HTMLButtonElement>("pe-close");
@@ -603,6 +662,7 @@ function initPostInlineEditor(): void {
 			categoryEl.value = String(data.category ?? "");
 			draftEl.checked = data.draft === true;
 			if (pinnedEl) pinnedEl.checked = data.pinned === true;
+			if (imageEl) imageEl.value = String(data.image ?? "");
 			bodyEl.value = String(res.body.body ?? "");
 			saveBtn.disabled = false;
 			setStatus("✓ 已读入原文 —— 改完点「保存到仓库」（历史在 Git 里）");
@@ -652,8 +712,9 @@ function initPostInlineEditor(): void {
 		};
 		const published = state.data.published;
 		if (typeof published === "string" && published) data.published = published;
-		const image = state.data.image;
-		if (typeof image === "string" && image) data.image = image;
+		// 封面现在可以在面板里改（换图 / 贴地址 / 清空），所以以输入框为准；
+		// 输入框没动过时它的值就是读回来的原值，等价于「保持不变」。
+		if (imageEl) data.image = imageEl.value.trim();
 
 		state.busy = true;
 		saveBtn.disabled = true;
@@ -677,6 +738,76 @@ function initPostInlineEditor(): void {
 			saveBtn.disabled = !state.loaded;
 		}
 	};
+
+	// ── 上传：封面 / 正文图片 / 视频（和 /admin/edit/ 那页同一套行为）──
+	const setUploadStatus = (text: string): void => {
+		if (uploadStateEl) uploadStateEl.textContent = text;
+	};
+
+	const insertAtCursor = (snippet: string): void => {
+		const start = bodyEl.selectionStart ?? bodyEl.value.length;
+		const end = bodyEl.selectionEnd ?? start;
+		const before = bodyEl.value.slice(0, start);
+		const after = bodyEl.value.slice(end);
+		const block = `${before === "" || before.endsWith("\n") ? "" : "\n"}${snippet}\n`;
+		bodyEl.value = before + block + after;
+		const pos = (before + block).length;
+		bodyEl.focus();
+		bodyEl.setSelectionRange(pos, pos);
+	};
+
+	const uploadFile = async (file: File, kind: "cover" | "image" | "video"): Promise<void> => {
+		const password = pwEl.value.trim() || readStoredPassword();
+		if (!password) {
+			setUploadStatus("先填后台密码，再上传（上传也要鉴权）");
+			return;
+		}
+		rememberPassword(password);
+		setUploadStatus(`正在上传 ${file.name}（${(file.size / 1048576).toFixed(1)} MB）……`);
+		try {
+			// 原始字节直传（不压缩、不转码）
+			const res = await postBinary("/api/upload", password, file);
+			if (res.body.ok !== true) {
+				setUploadStatus(`✗ 上传失败：${errText(res.body, res.status)}`);
+				return;
+			}
+			const url = String(res.body.url ?? "");
+			if (kind === "cover") {
+				if (imageEl) imageEl.value = url;
+				setUploadStatus(`✓ 已上传并设为封面：${url}（改完记得点「保存到仓库」）`);
+				return;
+			}
+			const alt = file.name.replace(/\.[^.]+$/, "");
+			if (kind === "image") {
+				insertAtCursor(`![${alt}](${url})`);
+			} else {
+				insertAtCursor(
+					`<video src="${url}" controls playsinline preload="metadata" style="max-width:100%;border-radius:0.75rem"></video>`,
+				);
+			}
+			setUploadStatus(`✓ 已上传并插入正文：${url}（改完记得点「保存到仓库」）`);
+		} catch (e) {
+			setUploadStatus(`✗ 上传失败：${message(e)}`);
+		}
+	};
+
+	const wireUpload = (
+		button: HTMLButtonElement | null,
+		input: HTMLInputElement | null,
+		kind: "cover" | "image" | "video",
+	): void => {
+		if (!button || !input) return;
+		button.addEventListener("click", () => input.click());
+		input.addEventListener("change", () => {
+			const file = input.files?.[0];
+			input.value = "";
+			if (file) void uploadFile(file, kind);
+		});
+	};
+
+	wireUpload(pickCover, coverFile, "cover");
+	wireUpload(pickImage, imageFile, "image");
+	wireUpload(pickVideo, videoFile, "video");
 
 	fab.addEventListener("click", open);
 	closeBtn?.addEventListener("click", close);
@@ -736,6 +867,11 @@ function runAdminUi(): void {
 		initPostInlineEditor();
 	} catch (e) {
 		console.error("[admin] 文章就地编辑初始化失败", e);
+	}
+	try {
+		initBodyFontControls();
+	} catch (e) {
+		console.error("[admin] 正文字号控件初始化失败", e);
 	}
 }
 
