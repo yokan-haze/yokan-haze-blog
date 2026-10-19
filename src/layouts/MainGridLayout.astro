@@ -25,6 +25,7 @@ import Layout from "./Layout.astro";
 
 import "@/styles/expressive-code.css";
 import WriteFab from "@/components/common/WriteFab.astro";
+import { shouldShowWriteFab } from "@/utils/write-fab";
 
 interface Props {
 	title?: string;
@@ -73,6 +74,9 @@ const isHomePageCheck = isHomePage(Astro.url.pathname);
 const isPostPage = !!postSlug;
 const shouldRenderCategoryBar = !!siteConfig.categoryBar;
 const navbarWidthFull = siteConfig.navbar.widthFull ?? false;
+// 「落笔」写作入口只在首页和本子出现（站长 2026-10-19 要求），其它页面连 DOM 都不渲染。
+// 软导航时由 src/utils/write-fab.ts 补一刀（这个按钮在 swup 容器之外，切页不会自动换掉）。
+const showWriteFab = shouldShowWriteFab(Astro.url.pathname);
 
 const banner = getBannerVisibilityState({
 	isHomePage: isHomePageCheck,
@@ -179,8 +183,8 @@ const {
 
 <FloatingControls headings={headings} encrypted={encrypted} />
 
-<!-- 写作入口悬浮按钮（站长要求像 QQ/微信那样显眼） -->
-<WriteFab />
+<!-- 写作入口浮动按钮：只在首页与「本子」出现（站长 2026-10-19 要求） -->
+{showWriteFab && <WriteFab />}
 
 <!-- 移动端导航抽屉：渲染为 <body> 直系子元素，脱离导航栏的 transform 包含块才能铺满视口 -->
 <NavMenuPanel links={resolveNavMenuLinks()} />
