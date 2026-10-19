@@ -281,6 +281,43 @@ node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 
 - 缩略图优先用构建期解析出的优化图 URL；拿不到时用 LQIP 渐变底 + 图片图标兜底
 - 上传的图走 `public/uploads/`（公共路径），所以 `toSrcPath()` 特意保留 `/uploads/` 前缀
 
+### 追加三（2026-10-19 傍晚）：壁纸来源可切 / 删多余项 / 导航栏即时预览 / 上传不压缩
+
+站长三条要求：①「电脑壁纸和背景视频自由切换，把纯色背景按钮改成切换这两个的按钮」
+②「手机壁纸删掉、副标题删掉；导航栏那几个点了没看到效果，有什么用」
+③「上传壁纸的视频/照片不要压缩，4K 就 4K」。
+
+- **壁纸来源**：壁纸模式去掉「纯色背景」（只剩横幅 / 全屏 / 覆盖），下面新增一组
+  「壁纸来源：电脑壁纸 / 背景视频」，点一下即时切换（localStorage + `<html data-wallpaper-source="image">`）。
+  - ⚠ 关键坑：**光把视频层 `display:none` 不够**。视频播放时 BackgroundPlayer 会挂
+    `data-bg-video-playing`，那条属性会把 `#banner-images-container` 等壁纸图层淡出成 `opacity:0`，
+    于是「电脑壁纸」模式只看到 `#wallpaper-wrapper` 的 poster 底图（`/assets/images/wallpaper-poster.webp`），
+    根本不是配置的那 6 张壁纸。正确做法是走播放器自己的开关
+    （`window.dispatchEvent(new CustomEvent("bg-player-toggle"))`），它会撤掉那条属性、壁纸图才真的露出来；
+    BackgroundPlayer 里的自动播放也加了判断：`data-wallpaper-source === "image"` 时不自动播。
+- **删掉**：壁纸 tab 的「手机端壁纸」行（只留电脑端 + 背景视频，接口也不再提交 mobile）、
+  站点 tab 的「副标题」输入框（保存时不下发 subtitle，服务端保留原值）。
+- **导航栏四项改成即时预览**：透明程度 → `#navbar[data-transparent-mode]`；模糊度 →
+  `--navbar-glass-blur`；满宽 → `#navbar[data-full-width]`；固定方式 → `body.sticky-navbar` /
+  `dynamic-navbar`。点一下当场看到效果，保存到站点后才是全站生效（分区标题写了这句）。
+- **上传不压缩**：`/api/upload` 支持**原始字节直传**（`content-type` 是图片/视频 + `x-filename` 头），
+  不再走 base64 JSON（请求体不再膨胀 1/3）；接口不做任何转码/压缩/改分辨率；
+  上限从 25MB 提到 **图片 30MB / 视频 40MB**（Worker 内存 + GitHub 接口的安全线），超限 413 并说明原因。
+  `/admin/` 编辑器上传也改走这条（新增 `postBinary`）。
+
+### 这辈子都别再踩一次：headless Chrome 连 Cloudflare 走 HTTP/3 会“假死”
+
+第三轮上线后，线上复查一度显示「设置面板打不开、tab 点不动、所有 island 都没水合」，
+但同一份产物在本机 dev server 里完全正常。查了很久，结论是**环境问题**：
+
+> 本机 headless Chrome 访问 `https://yokan-haze.pages.dev` 时走 HTTP/3（QUIC），
+> `<script type="module">` 会一直挂起不执行 —— `document.readyState` 永远停在 `interactive`，
+> `astro-island` 的 `ssr` 属性不消失（没水合），`window.swup` 是 `undefined`，
+> 控制台却一个错误都不报。加 `--disable-quic` 立刻恢复正常。
+
+所以 `browser-sessions/` 下**所有 headless 验证脚本现在都带 `--disable-quic`**。
+以后线上复查再看到「整页都没有交互」，先加这个参数排除，别急着怀疑代码。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
