@@ -1354,9 +1354,10 @@ $effect(() => {
 						{:else if preview}
 							<img src={preview} alt={item.label} class="w-full h-full object-cover" />
 						{:else if item.kind === "video"}
-							<Icon icon="material-symbols:movie-outline" class="text-[1.15rem]"></Icon>
-						{:else if !thumbStyle}
-							<Icon icon="material-symbols:image-outline" class="text-[1.15rem]"></Icon>
+							<Icon icon="material-symbols:movie-outline" class="text-[1.15rem] opacity-80"></Icon>
+						{:else}
+							<!-- 没有真实缩略图时，渐变底色上叠一个图片图标，看起来是「占位缩略图」 -->
+							<Icon icon="material-symbols:image-outline" class="text-[1.15rem] opacity-70"></Icon>
 						{/if}
 					</div>
 					<div class="flex-1 min-w-0">

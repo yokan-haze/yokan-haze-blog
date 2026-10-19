@@ -79,9 +79,12 @@ const logoPreviewUrl = logoAbsolute ? toLocalUrl(logoAbsolute) : "";
 // 设置面板「壁纸」tab 的缩略预览：当前壁纸（可能是 src 资源 / public 路径 / 外链）
 // 这里把第一张解析成能在浏览器里直接打开的地址，换壁纸后能马上看到缩略图。
 const currentBackground = getBackgroundImages();
+// eager: true —— 用静态 import 把源图打进产物。
+// （懒加载版本在 CI 上解析不出 URL，本地却正常；eager 是确定性写法，代价只是多引几张图，
+//   这些图本来就被壁纸组件用到。）
 const bgImageFiles = import.meta.glob<ImageMetadata>(
 	"../../**/*.{png,jpg,jpeg,webp,avif,gif}",
-	{ import: "default" },
+	{ import: "default", eager: true },
 );
 async function resolveWallpaperPreview(value: string): Promise<string> {
 	if (!value) return "";
@@ -90,7 +93,8 @@ async function resolveWallpaperPreview(value: string): Promise<string> {
 	const file = bgImageFiles[normalized];
 	if (!file) return "";
 	try {
-		return toLocalUrl((await file()).src);
+		const meta = typeof file === "function" ? await file() : file;
+		return toLocalUrl(meta.src);
 	} catch {
 		return "";
 	}
