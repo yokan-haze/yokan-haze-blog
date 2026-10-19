@@ -1,11 +1,6 @@
 {
   "desktop": [
-    "assets/images/DesktopWallpaper/d1.avif",
-    "assets/images/DesktopWallpaper/d2.avif",
-    "assets/images/DesktopWallpaper/d3.avif",
-    "assets/images/DesktopWallpaper/d4.avif",
-    "assets/images/DesktopWallpaper/d5.avif",
-    "assets/images/DesktopWallpaper/d6.avif"
+    "/uploads/20261019050109-2026-10-16-195145.png"
   ],
   "mobile": [
     "assets/images/MobileWallpaper/m1.avif",
