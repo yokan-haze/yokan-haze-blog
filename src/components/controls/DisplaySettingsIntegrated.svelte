@@ -11,6 +11,7 @@ import {
 import siteAppearanceRaw from "@/data/siteAppearance.json";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
+import { getLqipProps } from "@/utils/lqip-utils";
 import {
 	getDefaultBannerCarouselEnabled,
 	getDefaultBannerTitleEnabled,
@@ -79,12 +80,14 @@ type TabKey = "appearance" | "wallpaper" | "effects" | "site";
 
 // 头像 / Logo 的「当前真实 URL」由 Navbar.astro 在构建期解析好传进来
 // （JSON 里存的是 "assets/images/..." 这种 src 源路径，直接当 img src 会 404）。
-let { avatarUrl = "", logoUrl = "", wallpaperDesktop = "", wallpaperMobile = "", wallpaperVideo = "" }: {
+let { avatarUrl = "", logoUrl = "", wallpaperDesktop = "", wallpaperMobile = "", wallpaperVideo = "", wallpaperDesktopRaw = "", wallpaperMobileRaw = "" }: {
 	avatarUrl?: string;
 	logoUrl?: string;
 	wallpaperDesktop?: string;
 	wallpaperMobile?: string;
 	wallpaperVideo?: string;
+	wallpaperDesktopRaw?: string;
+	wallpaperMobileRaw?: string;
 } = $props();
 
 // 站点外观数据（头像 / Logo / 标题 / 导航栏）—— 由 /api/appearance 写回这份 JSON，
@@ -332,6 +335,11 @@ const WALLPAPER_ROWS: { kind: "desktop" | "mobile" | "video"; label: string; act
 	{ kind: "mobile", label: "手机端壁纸", action: "换图", accept: "image/*" },
 	{ kind: "video", label: "背景视频", action: "换视频", accept: "video/*" },
 ];
+
+// 当前壁纸的「底色」：用构建期生成的 LQIP 渐变（不依赖能不能拿到优化后的图片 URL，
+// 线上 CI 构建时那个 URL 有时拿不到，有渐变至少能看出是哪张壁纸）
+let desktopThumbStyle = $derived(wallpaperDesktopRaw ? getLqipProps(wallpaperDesktopRaw, "").style : "");
+let mobileThumbStyle = $derived(wallpaperMobileRaw ? getLqipProps(wallpaperMobileRaw, "").style : "");
 
 async function uploadWallpaper(file: File, kind: "desktop" | "mobile" | "video"): Promise<void> {
 	if (!adminPassword.trim()) {
@@ -1331,20 +1339,30 @@ $effect(() => {
 					item.kind === "desktop" ? desktopPreview : item.kind === "mobile" ? mobilePreview : videoPreview}
 				{@const pending =
 					item.kind === "desktop" ? desktopPath : item.kind === "mobile" ? mobilePath : videoPath}
+				{@const raw =
+					item.kind === "desktop" ? wallpaperDesktopRaw : item.kind === "mobile" ? wallpaperMobileRaw : ""}
+				{@const thumbStyle =
+					item.kind === "desktop" ? desktopThumbStyle : item.kind === "mobile" ? mobileThumbStyle : ""}
 				<div class="flex items-center gap-3 mb-2">
-					<div class="w-14 h-10 rounded-md overflow-hidden bg-(--btn-regular-bg) shrink-0 flex items-center justify-center">
+				<div
+					class="w-14 h-10 rounded-md overflow-hidden bg-(--btn-regular-bg) shrink-0 flex items-center justify-center"
+					style={preview ? "" : thumbStyle}
+					data-wallpaper-thumb={item.kind}
+				>
 						{#if preview && item.kind === "video"}
 							<video src={preview} muted playsinline preload="metadata" class="w-full h-full object-cover"></video>
 						{:else if preview}
 							<img src={preview} alt={item.label} class="w-full h-full object-cover" />
-						{:else}
+						{:else if item.kind === "video"}
+							<Icon icon="material-symbols:movie-outline" class="text-[1.15rem]"></Icon>
+						{:else if !thumbStyle}
 							<Icon icon="material-symbols:image-outline" class="text-[1.15rem]"></Icon>
 						{/if}
 					</div>
 					<div class="flex-1 min-w-0">
 						<div class="text-sm">{item.label}</div>
 						<div class="text-[0.7rem] opacity-60 truncate">
-							{pending ? "待保存：" + fileNameOf(pending) : fileNameOf(preview) || "未设置"}
+							{pending ? "待保存：" + fileNameOf(pending) : fileNameOf(raw) || fileNameOf(preview) || "未设置"}
 						</div>
 					</div>
 					<label class="btn-regular rounded-md px-3 py-1.5 text-xs cursor-pointer active:scale-95">

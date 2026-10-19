@@ -97,6 +97,12 @@ async function resolveWallpaperPreview(value: string): Promise<string> {
 }
 const wallpaperDesktopPreview = await resolveWallpaperPreview(currentBackground.desktop[0] ?? "");
 const wallpaperMobilePreview = await resolveWallpaperPreview(currentBackground.mobile[0] ?? "");
+// 原始配置值（"assets/images/..." / "/uploads/..."）：面板里显示友好文件名，
+// 并用它取构建期生成的 LQIP 渐变做缩略底色 ——
+// CI 上 import.meta.glob 的懒加载拿不到源图 URL（线上实测 preview 为空），
+// 有渐变至少能看出「当前是哪张壁纸」。
+const wallpaperDesktopRaw = currentBackground.desktop[0] ?? "";
+const wallpaperMobileRaw = currentBackground.mobile[0] ?? "";
 // src 可能是字符串/数组，也可能是 { desktop, mobile, playerUrl } —— 防御性取视频地址
 const bgSrcConfig = backgroundWallpaper.src;
 const videoSource =
@@ -292,6 +298,8 @@ const logoVariants = await Promise.all(
             logoUrl={logoPreviewUrl}
             wallpaperDesktop={wallpaperDesktopPreview}
             wallpaperMobile={wallpaperMobilePreview}
+            wallpaperDesktopRaw={wallpaperDesktopRaw}
+            wallpaperMobileRaw={wallpaperMobileRaw}
             wallpaperVideo={wallpaperVideoPreview}
         ></DisplaySettings>}
     </div>
