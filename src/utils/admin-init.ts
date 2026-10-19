@@ -18,28 +18,16 @@
 // 标记随之消失，所以「同一页重复收到事件」不会重复绑定，「换到新页」
 // 一定会重新绑定。这套做法与主题里 MusicPlayerView 的思路一致。
 
-const PW_KEY = "adminPassword";
+// 「读取本机设置 → 提交为全站默认」这套逻辑和右上角设置面板共用一份，
+// 见 src/utils/site-settings-client.ts（键白名单、类型还原、提交、回执都在那里）。
+// 这里只负责 /admin/ 页面上的 DOM。
 
-// 与 functions/api/settings.ts 的白名单、以及主题真实使用的 localStorage 键
-// 保持一致（顺序 = 页面展示顺序）。主题用的是 theme / postListLayout 这些
-// 名字，别想当然写成 themeMode / postLayout。
-const SETTING_KEYS = [
-	"theme",
-	"hue",
-	"wallpaperMode",
-	"fullscreenLayout",
-	"postListLayout",
-	"overlayOpacity",
-	"overlayBlur",
-	"overlayCardOpacity",
-	"wavesEnabled",
-	"gradientEnabled",
-	"sakuraEnabled",
-	"bannerTitleEnabled",
-	"bannerCarouselEnabled",
-	"cardBorderEnabled",
-	"cardFollowThemeEnabled",
-];
+import {
+	readLocalSettings,
+	readStoredPassword,
+	rememberPassword,
+	saveSiteSettings,
+} from "@/utils/site-settings-client";
 
 type Json = Record<string, unknown>;
 
@@ -73,22 +61,6 @@ function errText(body: Json, status: number): string {
 
 function message(e: unknown): string {
 	return e instanceof Error ? e.message : String(e);
-}
-
-function storedPassword(): string {
-	try {
-		return localStorage.getItem(PW_KEY) ?? "";
-	} catch {
-		return "";
-	}
-}
-
-function rememberPassword(password: string): void {
-	try {
-		localStorage.setItem(PW_KEY, password);
-	} catch {
-		// 隐私模式下写不进去也不影响本次使用
-	}
 }
 
 async function readJson(response: Response): Promise<Json> {
@@ -145,7 +117,7 @@ function initSettingsPage(): void {
 	if (!pwEl || !pwState || !listEl || !outEl || !readBtn || !pushBtn) return;
 
 	const showPwState = (): void => {
-		const value = storedPassword();
+		const value = readStoredPassword();
 		pwState.textContent = value ? `✓ 已记住（长度 ${value.length}）` : "尚未记住";
 		if (value) pwEl.value = value;
 	};
@@ -160,20 +132,8 @@ function initSettingsPage(): void {
 		showPwState();
 	});
 
-	// 主题把布尔存成 "true"/"false"、数字存成字符串，这里还原成真实类型，
-	// 否则接口的白名单会因为类型不符把值丢掉。
-	const readLocal = (): Json => {
-		const out: Json = {};
-		for (const key of SETTING_KEYS) {
-			const raw = localStorage.getItem(key);
-			if (raw === null) continue;
-			if (raw === "true") out[key] = true;
-			else if (raw === "false") out[key] = false;
-			else if (raw !== "" && !Number.isNaN(Number(raw))) out[key] = Number(raw);
-			else out[key] = raw;
-		}
-		return out;
-	};
+	// 类型还原（"true" → true、"0.8" → 0.8）在共用模块里做，这里只取结果
+	const readLocal = (): Json => readLocalSettings() as Json;
 
 	const render = (obj: Json): void => {
 		const keys = Object.keys(obj);
@@ -213,13 +173,12 @@ function initSettingsPage(): void {
 
 			outEl.textContent = "提交中……";
 			try {
-				const res = await postJson("/api/settings", password, { settings: data });
-				if (res.body.ok === true) {
-					const saved = res.body.saved;
-					const count = saved && typeof saved === "object" ? Object.keys(saved).length : 0;
-					outEl.textContent = `✓ 已保存 ${count} 项。约 1 分钟后重新构建完成，届时所有人看到的都是这个样子。`;
+				// 和右上角设置面板走的是同一个函数（src/utils/site-settings-client.ts）
+				const res = await saveSiteSettings(password, data as never);
+				if (res.ok) {
+					outEl.textContent = `✓ 已保存 ${res.savedCount} 项。约 1 分钟后重新构建完成，届时所有人看到的都是这个样子。`;
 				} else {
-					outEl.textContent = `✗ 失败（HTTP ${res.status}）：${errText(res.body, res.status)}`;
+					outEl.textContent = `✗ 失败（HTTP ${res.status}）：${res.error ?? ""}`;
 				}
 			} catch (e) {
 				outEl.textContent = `✗ 请求出错：${message(e)}`;
@@ -352,7 +311,7 @@ function initEditPage(): void {
 	if (!pwEl || !outEl || !typeEl || !filenameEl || !titleEl || !descriptionEl) return;
 	if (!tagsEl || !categoryEl || !draftEl || !bodyEl || !loadState) return;
 
-	if (!pwEl.value) pwEl.value = storedPassword();
+	if (!pwEl.value) pwEl.value = readStoredPassword();
 
 	// ── 修改已有文章：URL 带 ?file= 时读回并把内容填进表单 ──
 	// 之前的实现只会在 localStorage 里已有密码时才去读，而密码只在「点发布」
@@ -372,7 +331,7 @@ function initEditPage(): void {
 		else if (file.includes("/projects/")) typeEl.value = "projects";
 		else typeEl.value = "posts";
 
-		const password = pwEl.value.trim() || storedPassword();
+		const password = pwEl.value.trim() || readStoredPassword();
 		if (!password) {
 			loadState.textContent = `要修改的是 ${file} —— 请在下方填入密码，然后点「读取内容」`;
 			return;
@@ -483,7 +442,7 @@ function initEditPage(): void {
 	};
 
 	const uploadFile = async (file: File, kind: "cover" | "image" | "video"): Promise<void> => {
-		const password = pwEl.value.trim() || storedPassword();
+		const password = pwEl.value.trim() || readStoredPassword();
 		if (!password) {
 			setUploadState("先填后台密码，再上传（上传也要鉴权）");
 			return;
@@ -600,7 +559,7 @@ function initPostInlineEditor(): void {
 		panel.setAttribute("aria-hidden", "false");
 		// 没读到原文之前不允许保存 —— 否则会把正文写空（这是最危险的一种「成功」）
 		saveBtn.disabled = !state.loaded;
-		if (!pwEl.value) pwEl.value = storedPassword();
+		if (!pwEl.value) pwEl.value = readStoredPassword();
 		if (state.loaded) {
 			setStatus("改动会提交到仓库，约 1 分钟后这一页更新。原始版本在 Git 里，能回退。");
 			return;

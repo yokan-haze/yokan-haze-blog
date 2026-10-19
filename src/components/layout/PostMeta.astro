@@ -4,23 +4,18 @@ import { commentConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { formatDateToYYYYMMDD } from "@/utils/date-utils";
-import { getCategoryUrl, getTagUrl } from "@/utils/url-utils";
+import { getCategoryUrl } from "@/utils/url-utils";
 
 export interface Props {
 	published: Date;
 	updated?: Date;
 	category?: string;
-	tags?: string[];
 	hideUpdateDate?: boolean;
-	hideTagsForMobile?: boolean;
 	isHome?: boolean;
 	className?: string;
 	id?: string;
 	showPublished?: boolean;
 	showCategory?: boolean;
-	showTags?: boolean;
-	maxTags?: number;
-	showNoTags?: boolean;
 	customPath?: string;
 	pinned?: boolean;
 	password?: boolean;
@@ -35,17 +30,12 @@ const {
 	published,
 	updated,
 	category,
-	tags,
 	hideUpdateDate,
-	hideTagsForMobile,
 	isHome,
 	className = "",
 	id,
 	showPublished = true,
 	showCategory = true,
-	showTags = true,
-	maxTags,
-	showNoTags = true,
 	customPath,
 	pinned,
 	words,
@@ -57,8 +47,6 @@ const {
 } = Astro.props;
 
 const path = customPath || (id ? `/posts/${id}` : "");
-const visibleTags =
-	typeof maxTags === "number" ? tags?.slice(0, maxTags) : tags;
 ---
 
 <div
@@ -130,50 +118,6 @@ const visibleTags =
           >
             {category || i18n(I18nKey.uncategorized)}
           </a>
-        </div>
-      </div>
-    )
-  }
-
-  {
-    showTags && (
-      <div
-        class:list={[
-          "post-meta-tags items-center",
-          { flex: !hideTagsForMobile, "hidden md:flex": hideTagsForMobile },
-        ]}
-      >
-        <div class="flex flex-row flex-wrap items-center">
-          <div class="meta-icon">
-            <Icon name="material-symbols:tag-rounded" class="text-xl" />
-          </div>
-          {visibleTags &&
-            visibleTags.length > 0 &&
-            visibleTags.map((tag, i) => (
-              <>
-                <div
-                  class:list={[
-                    { hidden: i === 0 },
-                    "meta-divider mx-1.5 text-(--meta-divider) text-sm",
-                  ]}
-                >
-                  /
-                </div>
-                <a
-                  href={getTagUrl(tag)}
-                  aria-label={`View all posts with the ${tag.trim()} tag`}
-                  class="link-lg transition text-50 text-sm font-medium
-                    hover:text-(--primary) dark:hover:text-(--primary) whitespace-nowrap"
-                >
-                  {tag.trim()}
-                </a>
-              </>
-            ))}
-          {showNoTags && !(visibleTags && visibleTags.length > 0) && (
-            <div class="transition text-50 text-sm font-medium">
-              {i18n(I18nKey.noTags)}
-            </div>
-          )}
         </div>
       </div>
     )
@@ -292,15 +236,6 @@ const visibleTags =
 </div>
 
 <style>
-  .post-meta-tags {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  .post-meta-tags .meta-icon {
-    flex-shrink: 0;
-  }
-
   .post-meta-cover .text-50,
   .post-meta-cover .meta-divider {
     color: rgb(255 255 255 / 0.9) !important;
@@ -323,10 +258,6 @@ const visibleTags =
     font-size: 1rem;
   }
 
-  .post-meta-cover .post-meta-tags {
-    min-width: 0;
-  }
-
   .post-meta-cover a:hover {
     color: white !important;
   }
@@ -339,11 +270,4 @@ const visibleTags =
     background-color: rgb(255 255 255 / 0.26) !important;
   }
 
-  @media (max-width: 767px) {
-    .post-meta-tags {
-      width: 100%;
-      /* 标签换行时图标与首行标签对齐，避免垂直居中漂浮导致变形 */
-      align-items: flex-start;
-    }
-  }
 </style>

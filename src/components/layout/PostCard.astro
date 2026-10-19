@@ -7,7 +7,7 @@ import PostMetadata from "@/components/layout/PostMeta.astro";
 import PostStats from "@/components/layout/PostStats.astro";
 import { siteConfig } from "@/config";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
-import { getFileDirFromPath, getTagUrl } from "@/utils/url-utils";
+import { getFileDirFromPath } from "@/utils/url-utils";
 
 interface Props {
 	class?: string;
@@ -16,7 +16,6 @@ interface Props {
 	url: string;
 	published: Date;
 	updated?: Date;
-	tags: string[];
 	category: string | null;
 	image: string;
 	description: string;
@@ -31,7 +30,6 @@ const {
 	title,
 	url,
 	published,
-	tags,
 	category,
 	image,
 	description,
@@ -65,11 +63,6 @@ const descriptionLines = Math.max(
 // PostMeta 配置
 const metaConfig = siteConfig.postListLayout.meta ?? {};
 const showCategory = metaConfig.showCategory ?? true;
-const metaShowTags = metaConfig.showTags ?? true;
-const metaTagCount =
-	metaConfig.tagCount !== undefined
-		? Math.max(0, Math.trunc(metaConfig.tagCount))
-		: 1;
 const metaShowWords = metaConfig.showWords ?? true;
 const metaShowReadingTime = metaConfig.showReadingTime ?? true;
 const metaShowPublished = metaConfig.showPublished ?? true;
@@ -80,21 +73,9 @@ const statsShowPublished = statsConfig.showPublished ?? true;
 const statsShowWords = statsConfig.showWords ?? true;
 const statsShowReadingTime = statsConfig.showReadingTime ?? true;
 
-// 标签显示位置
-const tagsPosition = siteConfig.postListLayout.tagsPosition ?? "meta";
-const showTagsInMeta = metaShowTags && tagsPosition === "meta";
-const showTagsAtBottom = metaShowTags && tagsPosition === "bottom";
-// 底部标签样式："chip" 按钮样式，"text" 纯文字无底色
-const bottomTagsAsText =
-	(siteConfig.postListLayout.tagsBottomStyle ?? "chip") === "text";
+// 文章卡片不再显示标签（站长 2026-10-19 要求：卡片上的 #随笔 这类标签去掉）
 const descriptionClampLines = String(descriptionLines);
 const shouldClampDescription = descriptionLines > 0;
-
-// 底部标签：超出 tagCount 的部分折叠成一个 +N 提示，tagCount 为 0 时不限制
-const tagList = tags ?? [];
-const bottomTags = metaTagCount > 0 ? tagList.slice(0, metaTagCount) : tagList;
-const hiddenTags = tagList.slice(bottomTags.length);
-const hiddenTagCount = hiddenTags.length;
 
 const { remarkPluginFrontmatter } = await render(entry);
 const descriptionText = description || remarkPluginFrontmatter.excerpt || "";
@@ -147,12 +128,8 @@ const minutes = remarkPluginFrontmatter.minutes;
     <!-- metadata -->
     <PostMetadata
       published={published}
-      tags={tags}
       showPublished={metaShowPublished}
       showCategory={showCategory}
-      showTags={showTagsInMeta}
-      maxTags={metaTagCount > 0 ? metaTagCount : undefined}
-      showNoTags={true}
       hideUpdateDate={true}
       category={category || undefined}
       pinned={pinned}
@@ -174,57 +151,17 @@ const minutes = remarkPluginFrontmatter.minutes;
       {descriptionText}
     </div>
 
-    <!-- bottom tags（与 stats 二选一） -->
-    {showTagsAtBottom && bottomTags.length > 0 && (
-      <div
-        class:list={[
-          "post-card-bottom-tags flex flex-wrap items-center mt-auto pt-3",
-          bottomTagsAsText ? "gap-x-3 gap-y-1" : "gap-1.5",
-        ]}
-      >
-        {bottomTags.map((tag) => (
-          <a
-            href={getTagUrl(tag)}
-            aria-label={`View all posts with the ${tag.trim()} tag`}
-            class:list={[
-              "transition text-xs font-medium",
-              bottomTagsAsText
-                ? "text-50 hover:text-(--primary)"
-                : "tag-item px-2.5 py-1",
-            ]}
-          >
-            #{tag.trim()}
-          </a>
-        ))}
-        {hiddenTagCount > 0 && (
-          <span
-            title={hiddenTags.map((tag) => `#${tag.trim()}`).join(" ")}
-            class:list={[
-              "text-xs font-medium",
-              bottomTagsAsText
-                ? "text-50"
-                : "tag-item tag-item-static px-2.5 py-1",
-            ]}
-          >
-            +{hiddenTagCount}
-          </span>
-        )}
-      </div>
-    )}
-
-    <!-- stats（与底部标签二选一） -->
-    {!showTagsAtBottom && (
-      <PostStats
-        published={published}
-        words={words}
-        minutes={minutes}
-        showPublished={statsShowPublished}
-        showWords={statsShowWords}
-        showReadingTime={statsShowReadingTime}
-        showIcons={siteConfig.postListLayout.showStatsIcons}
-        className="stats mt-auto pt-3 text-black/30 dark:text-white/30 gap-x-2"
-      />
-    )}
+    <!-- stats -->
+    <PostStats
+      published={published}
+      words={words}
+      minutes={minutes}
+      showPublished={statsShowPublished}
+      showWords={statsShowWords}
+      showReadingTime={statsShowReadingTime}
+      showIcons={siteConfig.postListLayout.showStatsIcons}
+      className="stats mt-auto pt-3 text-black/30 dark:text-white/30 gap-x-2"
+    />
   </div>
   {
     hasCover && (

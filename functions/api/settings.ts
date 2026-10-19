@@ -241,9 +241,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 		if (current) {
 			try {
 				const parsed = JSON.parse(current.text) as Record<string, unknown>;
-				// 保留以下划线开头的注释键
+				// 保留：
+				//   1) 以下划线开头的注释键（_说明 之类）
+				//   2) 已有的实际设置项 —— 本次没提交的键原样留着。
+				// 为什么要留（2026-10-19 改）：设置面板的「保存为全站默认」只提交
+				// **这台浏览器里改过**的键；如果按「整体覆盖」写，没提交的键会被清掉，
+				// 构建时回退成代码里的默认值 —— 站长的设置会被静默重置。
 				for (const [k, v] of Object.entries(parsed)) {
-					if (k.startsWith("_")) merged[k] = v;
+					if (k.startsWith("_") || ALLOWED_KEYS.has(k)) merged[k] = v;
 				}
 			} catch {
 				// 旧文件坏了就重写，不阻断保存

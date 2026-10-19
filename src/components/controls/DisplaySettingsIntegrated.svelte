@@ -12,6 +12,7 @@ import siteAppearanceRaw from "@/data/siteAppearance.json";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { getLqipProps } from "@/utils/lqip-utils";
+import { saveSiteSettings } from "@/utils/site-settings-client";
 import {
 	getDefaultBannerCarouselEnabled,
 	getDefaultBannerTitleEnabled,
@@ -331,6 +332,12 @@ let adminPassword = $state("");
 let siteBusy = $state(false);
 let siteStatus = $state("");
 
+// 把当前调好的外观（主题色 / 壁纸模式 / 透明度 / 特效 / 卡片样式）存成全站默认。
+// 和 /admin/ 那个「保存为全站默认」走的是同一个函数（src/utils/site-settings-client.ts），
+// 密码也用面板里这一个输入框，不用再跑去后台。
+let defaultsBusy = $state(false);
+let defaultsStatus = $state("");
+
 // ── 壁纸图片 / 背景视频（2026-10-19）────────────────────────────────────
 // 上传后先更新本地预览，点「保存壁纸」才写回 src/data/wallpapers.json（约 1 分钟生效）。
 // 只想改上传哪一项就只提交哪一项，不会把另外两项冲掉。
@@ -510,6 +517,33 @@ async function uploadForSite(file: File, target: "avatar" | "logo" | "logoDark")
 		siteStatus = `✓ 已上传 ${body.url} —— 还要点下面「保存到站点」才会生效`;
 	} catch (e) {
 		siteStatus = `✗ 上传失败：${String(e)}`;
+	}
+}
+
+async function saveSiteDefaults(): Promise<void> {
+	if (!adminPassword.trim()) {
+		defaultsStatus = "先填上面的后台密码";
+		return;
+	}
+	defaultsBusy = true;
+	defaultsStatus = "正在提交……";
+	try {
+		const res = await saveSiteSettings(adminPassword.trim());
+		if (!res.ok) {
+			defaultsStatus = "✗ " + (res.error ?? "HTTP " + res.status);
+			return;
+		}
+		try {
+			localStorage.setItem("adminPassword", adminPassword.trim());
+		} catch {
+			// 忽略
+		}
+		defaultsStatus =
+			"✓ 已保存 " + res.savedCount + " 项外观设置，约 1 分钟后所有访客看到的就是这套";
+	} catch (e) {
+		defaultsStatus = "✗ 请求失败：" + String(e);
+	} finally {
+		defaultsBusy = false;
 	}
 }
 
@@ -1673,6 +1707,27 @@ $effect(() => {
 			</button>
 			{#if siteStatus}
 				<div class="text-[0.72rem] leading-5 mt-2 opacity-80">{siteStatus}</div>
+			{/if}
+		</div>
+
+		<!-- 全站默认外观：把上面几个 tab 调好的东西存给所有访客（原来只在 /admin/ 里有） -->
+		<div>
+			<div class="section-title">
+				全站默认外观
+				<span class="text-[0.7rem] font-normal opacity-70">主题色 / 壁纸 / 透明度 / 特效 / 卡片</span>
+			</div>
+			<div class="text-[0.68rem] leading-5 opacity-60 mb-2">
+				把现在这台设备上调好的外观存成所有人的默认值（用的是上面那个后台密码）。保存后约 1 分钟生效。
+			</div>
+			<button
+				class="w-full btn-regular rounded-md py-2 text-sm font-medium active:scale-95"
+				disabled={defaultsBusy}
+				onclick={() => void saveSiteDefaults()}
+			>
+				{defaultsBusy ? "提交中……" : "保存为全站默认（约 1 分钟生效）"}
+			</button>
+			{#if defaultsStatus}
+				<div class="text-[0.72rem] leading-5 mt-2 opacity-80">{defaultsStatus}</div>
 			{/if}
 		</div>
 	{/if}
