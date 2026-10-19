@@ -361,6 +361,50 @@ node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 
 
 上线 commit：`6a71b6e`（远端），工作流 `39240553276` success。
 
+## 二·补五：2026-10-19 深夜：「写文章」→「落笔」
+
+站长原话：「主页右下角的写文章按钮不好看，换一个文雅点的名字，图标也要改，绿色的很难看很突兀。
+以后写文章这个按钮只会出现在主页和本子里，其他地方一律不要出现。」
+
+### 改成了什么
+
+- 文案 **写文章 → 落笔**（`title` / `aria-label` 也一起：落笔 · 写一篇新文章）
+- 图标 `material-symbols:edit-document` → **`material-symbols:ink-pen`**（钢笔，先确认过
+  `@iconify-json/material-symbols` 里有，构建后是真的 svg 而不是空 span —— 这个坑 10-18 踩过一次）
+- 样式从「`--primary` 实心绿胶囊」改成跟主题浮动控件同款的**玻璃胶囊**：
+  `--card-bg` 底 + `backdrop-filter: blur(12px)` + 细描边 + 柔和投影，文字/图标用 `--deep-text`
+  （深墨色），hover 只加深底色并上浮 1px
+- ⚠ **这套主题里所有颜色的 hue 都是 165**（绿的）：`--primary` 彩度 .14、`--btn-content` .12、
+  `--deep-text` 只有 .02。所以「绿不绿」要看**彩度 C**，不能看 hue，也别再用 `--btn-content` 当文字色
+
+### 只在首页与本子出现（两个坑）
+
+1. **SSR 判断**：`MainGridLayout.astro` 用 `shouldShowWriteFab(Astro.url.pathname)` 决定首帧显隐；
+   逻辑在 `src/utils/write-fab.ts`：`/` 或含 `/notebook`（含分页 `/notebook/2/`、兼容子路径部署）。
+2. **不能只在目标页面渲染这个元素**：`#write-fab` 渲染在 swup 容器之外，
+   从「文章页」软导航回「本子」时，swup 只替换容器内容 —— 元素不会被补回来，
+   站长会遇到「本子里看不见落笔」。所以现在**处处渲染**（`<WriteFab hidden={!showWriteFab} />`，
+   隐藏时 SSR 直接写 `style="display: none"`），再由 `initWriteFabVisibility()`
+   在 `astro:page-load` / `swup:page:view` 时按当前地址校正（隐藏时同时 `aria-hidden` + `tabindex=-1`）。
+
+### 顺带发现（记一笔，不是这轮引入的）
+
+线上生产构建里 `window.swup` 是 `undefined`、`<html>` 没有 `swup-enabled` 类，
+点链接看起来是**整页跳转**；而同一份 dist 在本机 mock server 里 swup 是正常工作的。
+无头 Chrome 访问线上时 `document.readyState` 长期停在 `interactive`（load 事件不来）。
+以后线上复查看到「没有软导航」先别慌，用整页打开逐页断言即可；
+真要查软导航行为，用本机 dist（mock-server.mjs）那套。
+
+### 验证
+
+| 层 | 脚本 | 结果 |
+|---|---|---|
+| 本地界面 | `verify-write-fab.mjs` | 17 条全过：文案/标题/链接/图标 svg、底色是浅色玻璃、毛玻璃、胶囊圆角、文字彩度 ≤ .04；归档/文章页/admin 都 `display:none` 且宽高 0；本子可见；软导航 首页→归档 隐藏、→本子 恢复；移动端仍有「落笔」且在视口内 |
+| 线上 | `live-check-writefab.mjs` | 16 条全过：5 个页面的 HTML 首帧显隐正确、文案/图标/配色/位置正确、整页打开四页显隐正确 |
+| 构建 | `pnpm check` / `type-check` / `pnpm build` | 全 exit 0 |
+
+上线 commit：`e37a2dd`、`f04bf17`（远端），工作流均 success。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
