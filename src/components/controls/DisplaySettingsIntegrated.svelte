@@ -39,7 +39,9 @@ import {
 	getStoredTheme,
 	getStoredWallpaperMode,
 	getStoredWavesEnabled,
+	getStoredWallpaperSource,
 	setTheme,
+	setWallpaperSource,
 	setBannerCarouselEnabled,
 	setBannerTitleEnabled,
 	setCardBorderEnabled,
@@ -80,14 +82,12 @@ type TabKey = "appearance" | "wallpaper" | "effects" | "site";
 
 // 头像 / Logo 的「当前真实 URL」由 Navbar.astro 在构建期解析好传进来
 // （JSON 里存的是 "assets/images/..." 这种 src 源路径，直接当 img src 会 404）。
-let { avatarUrl = "", logoUrl = "", wallpaperDesktop = "", wallpaperMobile = "", wallpaperVideo = "", wallpaperDesktopRaw = "", wallpaperMobileRaw = "" }: {
+let { avatarUrl = "", logoUrl = "", wallpaperDesktop = "", wallpaperVideo = "", wallpaperDesktopRaw = "" }: {
 	avatarUrl?: string;
 	logoUrl?: string;
 	wallpaperDesktop?: string;
-	wallpaperMobile?: string;
 	wallpaperVideo?: string;
 	wallpaperDesktopRaw?: string;
-	wallpaperMobileRaw?: string;
 } = $props();
 
 // 站点外观数据（头像 / Logo / 标题 / 导航栏）—— 由 /api/appearance 写回这份 JSON，
@@ -294,7 +294,6 @@ let logoPreview = $state(
 	logoValue.startsWith("/") || logoValue.startsWith("http") ? logoValue : logoUrl,
 );
 let siteTitleValue = $state(appearance.title ?? siteConfig.title);
-let siteSubtitleValue = $state(appearance.subtitle ?? "");
 let navbarStyle = $state<"semi" | "semifull" | "none">(
 	(backgroundWallpaper.banner?.navbar?.transparentMode ?? "semi") as "semi" | "semifull" | "none",
 );
@@ -303,6 +302,31 @@ let navbarFull = $state(siteConfig.navbar.widthFull === true);
 let navbarModeValue = $state<"static" | "fixed" | "dynamic">(
 	(siteConfig.navbar.navbarMode ?? "dynamic") as "static" | "fixed" | "dynamic",
 );
+
+// 导航栏外观（透明程度 / 固定方式 / 模糊 / 满宽）以前点了没反应 ——
+// 因为那几个值要「保存到站点 + 重新构建」才生效。现在点一下先改当前页面的 DOM，
+// 当场就能看到效果；保存到站点后才是全站生效。
+function applyNavbarPreview(): void {
+	if (typeof document === "undefined") return;
+	const nav = document.getElementById("navbar");
+	if (nav) {
+		nav.setAttribute("data-transparent-mode", navbarStyle);
+		nav.style.setProperty("--navbar-glass-blur", `${navbarBlur}px`);
+		nav.setAttribute("data-full-width", String(navbarFull));
+	}
+	document.body.classList.toggle("sticky-navbar", navbarModeValue === "fixed");
+	document.body.classList.toggle("dynamic-navbar", navbarModeValue === "dynamic");
+}
+
+function pickNavbarStyle(value: "semi" | "semifull" | "none"): void {
+	navbarStyle = value;
+	applyNavbarPreview();
+}
+
+function pickNavbarMode(value: "static" | "fixed" | "dynamic"): void {
+	navbarModeValue = value;
+	applyNavbarPreview();
+}
 let adminPassword = $state("");
 let siteBusy = $state(false);
 let siteStatus = $state("");
@@ -311,13 +335,19 @@ let siteStatus = $state("");
 // 上传后先更新本地预览，点「保存壁纸」才写回 src/data/wallpapers.json（约 1 分钟生效）。
 // 只想改上传哪一项就只提交哪一项，不会把另外两项冲掉。
 let desktopPath = $state("");
-let mobilePath = $state("");
 let videoPath = $state("");
 let desktopPreview = $state(wallpaperDesktop);
-let mobilePreview = $state(wallpaperMobile);
 let videoPreview = $state(wallpaperVideo);
 let wallpaperBusy = $state(false);
 let wallpaperStatus = $state("");
+
+// 壁纸来源：电脑壁纸 / 背景视频（本机即时生效，2026-10-19 站长要求）
+let wallpaperSource = $state<"image" | "video">("video");
+
+function pickWallpaperSource(next: "image" | "video"): void {
+	wallpaperSource = next;
+	setWallpaperSource(next);
+}
 
 function fileNameOf(url: string): string {
 	if (!url) return "";
@@ -329,30 +359,32 @@ function fileNameOf(url: string): string {
 	}
 }
 
-// 壁纸三行：电脑端 / 手机端 / 背景视频
-const WALLPAPER_ROWS: { kind: "desktop" | "mobile" | "video"; label: string; action: string; accept: string }[] = [
+// 壁纸三行：电脑端 / 背景视频（手机端壁纸按站长 2026-10-19 要求删掉了）
+const WALLPAPER_ROWS: { kind: "desktop" | "video"; label: string; action: string; accept: string }[] = [
 	{ kind: "desktop", label: "电脑端壁纸", action: "换图", accept: "image/*" },
-	{ kind: "mobile", label: "手机端壁纸", action: "换图", accept: "image/*" },
 	{ kind: "video", label: "背景视频", action: "换视频", accept: "video/*" },
 ];
 
 // 当前壁纸的「底色」：用构建期生成的 LQIP 渐变（不依赖能不能拿到优化后的图片 URL，
 // 线上 CI 构建时那个 URL 有时拿不到，有渐变至少能看出是哪张壁纸）
 let desktopThumbStyle = $derived(wallpaperDesktopRaw ? getLqipProps(wallpaperDesktopRaw, "").style : "");
-let mobileThumbStyle = $derived(wallpaperMobileRaw ? getLqipProps(wallpaperMobileRaw, "").style : "");
 
-async function uploadWallpaper(file: File, kind: "desktop" | "mobile" | "video"): Promise<void> {
+async function uploadWallpaper(file: File, kind: "desktop" | "video"): Promise<void> {
 	if (!adminPassword.trim()) {
 		wallpaperStatus = "先填后台密码（上传与保存都要它）";
 		return;
 	}
 	wallpaperStatus = `正在上传 ${file.name}（${(file.size / 1048576).toFixed(1)} MB）……`;
 	try {
-		const data = await readAsBase64(file);
+		// 原始字节直传：不压缩、不转码，文件多大就传多大（服务端也不做任何处理）
 		const res = await fetch("/api/upload", {
 			method: "POST",
-			headers: { "content-type": "application/json", "x-admin-password": adminPassword.trim() },
-			body: JSON.stringify({ filename: file.name, type: file.type, data }),
+			headers: {
+				"content-type": file.type || "application/octet-stream",
+				"x-filename": encodeURIComponent(file.name),
+				"x-admin-password": adminPassword.trim(),
+			},
+			body: file,
 		});
 		const body = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
 		if (!body.ok || !body.url) {
@@ -362,9 +394,6 @@ async function uploadWallpaper(file: File, kind: "desktop" | "mobile" | "video")
 		if (kind === "desktop") {
 			desktopPath = body.url;
 			desktopPreview = body.url;
-		} else if (kind === "mobile") {
-			mobilePath = body.url;
-			mobilePreview = body.url;
 		} else {
 			videoPath = body.url;
 			videoPreview = body.url;
@@ -384,7 +413,6 @@ async function saveWallpapers(reset = false): Promise<void> {
 	if (reset) payload.reset = true;
 	else {
 		if (desktopPath) payload.desktop = desktopPath;
-		if (mobilePath) payload.mobile = mobilePath;
 		if (videoPath) payload.video = videoPath;
 		if (!Object.keys(payload).length) {
 			wallpaperStatus = "还没上传新壁纸";
@@ -419,7 +447,7 @@ async function saveWallpapers(reset = false): Promise<void> {
 	}
 }
 
-function onPickWallpaper(event: Event, kind: "desktop" | "mobile" | "video"): void {
+function onPickWallpaper(event: Event, kind: "desktop" | "video"): void {
 	const input = event.currentTarget as HTMLInputElement | null;
 	const file = input?.files?.[0];
 	if (input) input.value = "";
@@ -433,6 +461,7 @@ onMount(() => {
 		// 隐私模式读不到就算了
 	}
 	themeMode = getStoredTheme();
+	wallpaperSource = getStoredWallpaperSource();
 });
 
 function pickTheme(next: LIGHT_DARK_MODE): void {
@@ -447,16 +476,6 @@ function onPickFile(event: Event, target: "avatar" | "logo" | "logoDark"): void 
 	if (file) void uploadForSite(file, target);
 }
 
-async function readAsBase64(file: File): Promise<string> {
-	const dataUrl = await new Promise<string>((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => resolve(String(reader.result ?? ""));
-		reader.onerror = () => reject(reader.error);
-		reader.readAsDataURL(file);
-	});
-	return dataUrl.slice(dataUrl.indexOf(",") + 1);
-}
-
 async function uploadForSite(file: File, target: "avatar" | "logo" | "logoDark"): Promise<void> {
 	if (!adminPassword.trim()) {
 		siteStatus = "先填后台密码（上传与保存都要它）";
@@ -464,11 +483,15 @@ async function uploadForSite(file: File, target: "avatar" | "logo" | "logoDark")
 	}
 	siteStatus = `正在上传 ${file.name}（${(file.size / 1048576).toFixed(1)} MB）……`;
 	try {
-		const data = await readAsBase64(file);
+		// 原始字节直传：不压缩、不转码，文件多大就传多大（服务端也不做任何处理）
 		const res = await fetch("/api/upload", {
 			method: "POST",
-			headers: { "content-type": "application/json", "x-admin-password": adminPassword.trim() },
-			body: JSON.stringify({ filename: file.name, type: file.type, data }),
+			headers: {
+				"content-type": file.type || "application/octet-stream",
+				"x-filename": encodeURIComponent(file.name),
+				"x-admin-password": adminPassword.trim(),
+			},
+			body: file,
 		});
 		const body = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
 		if (!body.ok || !body.url) {
@@ -506,7 +529,7 @@ async function saveAppearance(): Promise<void> {
 		const payload: Record<string, unknown> = {
 			avatar: avatarRaw,
 			title: siteTitleValue.trim(),
-			subtitle: siteSubtitleValue.trim(),
+			// 副标题的输入框已经按站长要求删掉，这里不再提交（服务端看到缺省会保留原值）
 			navbar: {
 				mode: navbarModeValue,
 				widthFull: navbarFull,
@@ -1120,46 +1143,70 @@ $effect(() => {
 					</div>
 				</button>
 			</div>
-			<div class="grid grid-cols-2 gap-2">
+			<div class="grid grid-cols-3 gap-2">
 				<button
-					class="btn-regular rounded-md py-2 px-3 flex items-center justify-center gap-2 active:scale-95 transition-all relative overflow-hidden"
+					class="btn-regular rounded-md py-2 px-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all relative overflow-hidden"
 					class:opacity-60={wallpaperMode !== WALLPAPER_BANNER}
 					class:bg-(--btn-regular-bg-hover)={wallpaperMode === WALLPAPER_BANNER}
 					onclick={() => switchWallpaperMode(WALLPAPER_BANNER)}
 				>
-					<Icon icon="material-symbols:image-outline" class="text-[1.25rem] shrink-0"></Icon>
+					<Icon icon="material-symbols:image-outline" class="text-[1.15rem] shrink-0"></Icon>
 					<span class="text-xs font-medium">{i18n(I18nKey.wallpaperBannerMode)}</span>
 				</button>
 				<button
-					class="btn-regular rounded-md py-2 px-3 flex items-center justify-center gap-2 active:scale-95 transition-all relative overflow-hidden"
+					class="btn-regular rounded-md py-2 px-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all relative overflow-hidden"
 					class:opacity-60={wallpaperMode !== WALLPAPER_FULLSCREEN}
 					class:bg-(--btn-regular-bg-hover)={wallpaperMode === WALLPAPER_FULLSCREEN}
 					onclick={() => switchWallpaperMode(WALLPAPER_FULLSCREEN)}
 				>
-					<Icon icon="material-symbols:wallpaper" class="text-[1.25rem] shrink-0"></Icon>
+					<Icon icon="material-symbols:wallpaper" class="text-[1.15rem] shrink-0"></Icon>
 					<span class="text-xs font-medium">{i18n(I18nKey.wallpaperFullscreenMode)}</span>
 				</button>
 				<button
-					class="btn-regular rounded-md py-2 px-3 flex items-center justify-center gap-2 active:scale-95 transition-all relative overflow-hidden"
+					class="btn-regular rounded-md py-2 px-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all relative overflow-hidden"
 					class:opacity-60={wallpaperMode !== WALLPAPER_OVERLAY}
 					class:bg-(--btn-regular-bg-hover)={wallpaperMode === WALLPAPER_OVERLAY}
 					onclick={() => switchWallpaperMode(WALLPAPER_OVERLAY)}
 				>
-					<Icon icon="material-symbols:full-coverage-outline-rounded" class="text-[1.25rem] shrink-0"></Icon>
+					<Icon icon="material-symbols:full-coverage-outline-rounded" class="text-[1.15rem] shrink-0"></Icon>
 					<span class="text-xs font-medium">{i18n(I18nKey.wallpaperOverlayMode)}</span>
 				</button>
-				<button
-					class="btn-regular rounded-md py-2 px-3 flex items-center justify-center gap-2 active:scale-95 transition-all relative overflow-hidden"
-					class:opacity-60={wallpaperMode !== WALLPAPER_NONE}
-					class:bg-(--btn-regular-bg-hover)={wallpaperMode === WALLPAPER_NONE}
-					onclick={() => switchWallpaperMode(WALLPAPER_NONE)}
-				>
-					<Icon icon="material-symbols:hide-image-outline" class="text-[1.25rem] shrink-0"></Icon>
-					<span class="text-xs font-medium">{i18n(I18nKey.wallpaperNoneMode)}</span>
-				</button>
+				<!-- 原来的「纯色背景」按钮按站长要求去掉了（2026-10-19），
+				     那个位置换成下面的「壁纸来源」切换：电脑壁纸 ↔ 背景视频 -->
 			</div>
 		</div>
 		{/if}
+
+		<!-- 壁纸来源：电脑壁纸 / 背景视频（2026-10-19 站长要求可以自由切换） -->
+		<div>
+			<div class="section-title">
+				壁纸来源
+				<span class="text-[0.7rem] font-normal opacity-70">只对这台设备生效</span>
+			</div>
+			<div class="grid grid-cols-2 gap-2">
+				<button
+					class="btn-regular rounded-md py-2 px-2 flex items-center justify-center gap-2 active:scale-95 transition-all relative overflow-hidden"
+					class:opacity-60={wallpaperSource !== "image"}
+					class:bg-(--btn-regular-bg-hover)={wallpaperSource === "image"}
+					onclick={() => pickWallpaperSource("image")}
+				>
+					<Icon icon="material-symbols:image-outline" class="text-[1.15rem] shrink-0"></Icon>
+					<span class="text-xs font-medium">电脑壁纸</span>
+				</button>
+				<button
+					class="btn-regular rounded-md py-2 px-2 flex items-center justify-center gap-2 active:scale-95 transition-all relative overflow-hidden"
+					class:opacity-60={wallpaperSource !== "video"}
+					class:bg-(--btn-regular-bg-hover)={wallpaperSource === "video"}
+					onclick={() => pickWallpaperSource("video")}
+				>
+					<Icon icon="material-symbols:movie-outline" class="text-[1.15rem] shrink-0"></Icon>
+					<span class="text-xs font-medium">背景视频</span>
+				</button>
+			</div>
+			<div class="text-[0.68rem] leading-5 opacity-60 mt-1">
+				想让所有人都看到同一个，就选好之后用「保存壁纸」旁边的说明里的方式告诉我（这一项目前是本机即时生效）。
+			</div>
+		</div>
 
 		<!-- Fullscreen Layout Section -->
 		{#if isFullscreenLayoutSwitchable}
@@ -1335,14 +1382,10 @@ $effect(() => {
 			</div>
 
 			{#each WALLPAPER_ROWS as item (item.kind)}
-				{@const preview =
-					item.kind === "desktop" ? desktopPreview : item.kind === "mobile" ? mobilePreview : videoPreview}
-				{@const pending =
-					item.kind === "desktop" ? desktopPath : item.kind === "mobile" ? mobilePath : videoPath}
-				{@const raw =
-					item.kind === "desktop" ? wallpaperDesktopRaw : item.kind === "mobile" ? wallpaperMobileRaw : ""}
-				{@const thumbStyle =
-					item.kind === "desktop" ? desktopThumbStyle : item.kind === "mobile" ? mobileThumbStyle : ""}
+				{@const preview = item.kind === "desktop" ? desktopPreview : videoPreview}
+				{@const pending = item.kind === "desktop" ? desktopPath : videoPath}
+				{@const raw = item.kind === "desktop" ? wallpaperDesktopRaw : ""}
+				{@const thumbStyle = item.kind === "desktop" ? desktopThumbStyle : ""}
 				<div class="flex items-center gap-3 mb-2">
 				<div
 					class="w-14 h-10 rounded-md overflow-hidden bg-(--btn-regular-bg) shrink-0 flex items-center justify-center"
@@ -1379,7 +1422,7 @@ $effect(() => {
 			{/each}
 
 			<div class="text-[0.68rem] leading-5 opacity-60 mb-2">
-				图片建议 AVIF/WebP（上传的图不走构建期优化，原图多大就多大）；视频请先压到 1080p 以上、≤25MB。
+				原图 / 原视频直传，<b>不压缩、不转码、不改分辨率</b>（4K 就是 4K）。单个文件上限：图片 30MB、视频 40MB（网关限制）。
 			</div>
 
 			<input
@@ -1537,37 +1580,32 @@ $effect(() => {
 					class="w-full px-2.5 py-1.5 rounded-md bg-(--btn-regular-bg) text-sm text-(--btn-content)"
 				/>
 			</label>
-			<label class="block mb-1">
-				<div class="text-sm mb-1">副标题（首页大标题下面那句）</div>
-				<input
-					bind:value={siteSubtitleValue}
-					maxlength="80"
-					placeholder="例如：记录，然后忘记"
-					class="w-full px-2.5 py-1.5 rounded-md bg-(--btn-regular-bg) text-sm text-(--btn-content)"
-				/>
-			</label>
+			<!-- 副标题输入框按站长 2026-10-19 要求删掉了（配置里原来那句保持不变） -->
 		</div>
 
 		<!-- 导航栏外观 -->
 		<div>
-			<div class="section-title">导航栏</div>
+			<div class="section-title">
+				导航栏
+				<span class="text-[0.7rem] font-normal opacity-70">点一下当场预览 · 保存到站点后全站生效</span>
+			</div>
 
 			<div class="text-sm mb-1">透明程度</div>
 			<div class="grid grid-cols-3 gap-2 mb-2">
 				<button
 					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
 					class:bg-(--btn-regular-bg-hover)={navbarStyle === "none"}
-					onclick={() => (navbarStyle = "none")}>纯色</button
+					onclick={() => pickNavbarStyle("none")}>纯色</button
 				>
 				<button
 					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
 					class:bg-(--btn-regular-bg-hover)={navbarStyle === "semi"}
-					onclick={() => (navbarStyle = "semi")}>半透明</button
+					onclick={() => pickNavbarStyle("semi")}>半透明</button
 				>
 				<button
 					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
 					class:bg-(--btn-regular-bg-hover)={navbarStyle === "semifull"}
-					onclick={() => (navbarStyle = "semifull")}>动态透明</button
+					onclick={() => pickNavbarStyle("semifull")}>动态透明</button
 				>
 			</div>
 
@@ -1576,17 +1614,17 @@ $effect(() => {
 				<button
 					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
 					class:bg-(--btn-regular-bg-hover)={navbarModeValue === "fixed"}
-					onclick={() => (navbarModeValue = "fixed")}>常显</button
+					onclick={() => pickNavbarMode("fixed")}>常显</button
 				>
 				<button
 					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
 					class:bg-(--btn-regular-bg-hover)={navbarModeValue === "dynamic"}
-					onclick={() => (navbarModeValue = "dynamic")}>下滑隐藏</button
+					onclick={() => pickNavbarMode("dynamic")}>下滑隐藏</button
 				>
 				<button
 					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
 					class:bg-(--btn-regular-bg-hover)={navbarModeValue === "static"}
-					onclick={() => (navbarModeValue = "static")}>随页滚动</button
+					onclick={() => pickNavbarMode("static")}>随页滚动</button
 				>
 			</div>
 
@@ -1594,12 +1632,12 @@ $effect(() => {
 				<span>毛玻璃模糊度</span>
 				<span class="tabular-nums opacity-70">{navbarBlur}</span>
 			</div>
-			<input type="range" min="0" max="24" step="1" bind:value={navbarBlur} class="slider w-full mb-2" />
+			<input type="range" min="0" max="24" step="1" bind:value={navbarBlur} oninput={() => applyNavbarPreview()} class="slider w-full mb-2" />
 
 			<button
 				class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95"
 				class:bg-(--btn-regular-bg-hover)={navbarFull}
-				onclick={() => (navbarFull = !navbarFull)}
+				onclick={() => { navbarFull = !navbarFull; applyNavbarPreview(); }}
 			>
 				<Icon icon="material-symbols:width-full" class="text-[1.15rem] shrink-0"></Icon>
 				<span class="text-sm flex-1">导航栏满宽</span>

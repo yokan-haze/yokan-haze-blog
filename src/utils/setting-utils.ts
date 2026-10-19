@@ -956,3 +956,65 @@ export function setCardFollowThemeEnabled(enabled: boolean): void {
 		document.body.classList.remove("card-follow-theme-hue");
 	}
 }
+
+// ── 壁纸来源：电脑壁纸 ↔ 背景视频（2026-10-19 站长要求）────────────────────
+// 「不想用背景视频就换成电脑壁纸，想换回来再换回背景视频」——
+// 和其它外观项一样是**本机即时生效**（localStorage + <html data-wallpaper-source>），
+// 不写仓库、不需要等构建。默认还是背景视频（config 里 playerEnable: true）。
+//
+// 关键：光隐藏视频层不够。视频播放时播放器会挂 `data-bg-video-playing`，
+// 那条属性会把壁纸图层（#banner-images-container 等）淡出成 opacity:0，
+// 于是切到电脑壁纸只能看到 #wallpaper-wrapper 的 poster 底图。
+// 所以这里走播放器自己的开关（window 事件 bg-player-toggle）：
+// 切到电脑壁纸 = 让播放器「关掉」，它会把那条属性撤掉、壁纸图就露出来了。
+export type WALLPAPER_SOURCE = "image" | "video";
+
+export function applyWallpaperSourceToDocument(source: WALLPAPER_SOURCE): void {
+	if (typeof document === "undefined") return;
+	const root = document.documentElement;
+	const playing = root.hasAttribute("data-bg-video-playing");
+
+	if (source === "image") {
+		root.setAttribute("data-wallpaper-source", "image");
+		// 让播放器自己暂停（它会撤掉 data-bg-video-playing，壁纸图层随之淡入）
+		if (playing) window.dispatchEvent(new CustomEvent("bg-player-toggle"));
+		root.removeAttribute("data-bg-video-playing");
+		document.body.removeAttribute("data-bg-video-playing");
+		const video = document.getElementById("bg-player-video") as HTMLVideoElement | null;
+		if (video) {
+			try {
+				video.pause();
+			} catch {
+				// 忽略
+			}
+			video.preload = "none";
+		}
+	} else {
+		root.removeAttribute("data-wallpaper-source");
+		// 换回视频：没在播就让播放器开起来（它会重新挂上 data-bg-video-playing）
+		if (!playing) window.dispatchEvent(new CustomEvent("bg-player-toggle"));
+		const video = document.getElementById("bg-player-video") as HTMLVideoElement | null;
+		if (video) {
+			video.preload = "auto";
+			video.muted = true;
+		}
+	}
+}
+
+export function setWallpaperSource(source: WALLPAPER_SOURCE): void {
+	if (
+		typeof localStorage === "undefined" ||
+		typeof localStorage.setItem !== "function"
+	) {
+		return;
+	}
+	localStorage.setItem("wallpaperSource", source === "image" ? "image" : "video");
+	applyWallpaperSourceToDocument(source);
+}
+
+export function getStoredWallpaperSource(): WALLPAPER_SOURCE {
+	if (typeof localStorage === "undefined" || typeof localStorage.getItem !== "function") {
+		return "video";
+	}
+	return localStorage.getItem("wallpaperSource") === "image" ? "image" : "video";
+}

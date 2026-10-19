@@ -244,8 +244,12 @@ const tLoadError = i18n(I18nKey.videoLoadError);
 			video.loop = true;
 		}
 
-		// 自动播放：进入页面即开始，无需点击导航栏按钮
-		if (playerAutoplay) {
+		// 自动播放：进入页面即开始，无需点击导航栏按钮。
+		// 例外：站长在设置面板里选了「电脑壁纸」（<html data-wallpaper-source="image">）时不自动播放 ——
+		// 否则 data-bg-video-playing 会把壁纸图层淡出，切到电脑壁纸就只能看到 poster 底图。
+		const wallpaperSourceIsImage =
+			document.documentElement.getAttribute("data-wallpaper-source") === "image";
+		if (playerAutoplay && !wallpaperSourceIsImage) {
 			isPlaying = true;
 			syncAttr();
 			if (overlay) {

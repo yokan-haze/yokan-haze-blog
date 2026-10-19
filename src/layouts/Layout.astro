@@ -169,6 +169,13 @@ const contentTopCss = `:root{--cfg-overlay-content-top:${overlayContentTop};--cf
 			@layer properties, theme, base, components, utilities;
 		</style>
     <style is:global set:html={contentTopCss}></style>
+    {/* 壁纸来源切换（2026-10-19）：选了「电脑壁纸」就把背景视频层整个藏掉，
+        露出后面的壁纸图。视频元素本身还在（切回视频时能立刻起播），只是不显示。 */}
+    <style is:global>
+      html[data-wallpaper-source="image"] #bg-player {
+        display: none !important;
+      }
+    </style>
     {analyticsConfig?.googleAnalyticsId && (
             <GoogleAnalytics analyticsId={analyticsConfig.googleAnalyticsId} />
     )}
@@ -445,6 +452,16 @@ const contentTopCss = `:root{--cfg-overlay-content-top:${overlayContentTop};--cf
         "data-wallpaper-mode",
         wallpaperMode
       );
+
+      // 壁纸来源：电脑壁纸 / 背景视频（2026-10-19 站长要求）。
+      // 选了电脑壁纸就给 <html> 挂 data-wallpaper-source="image"，CSS 会把视频层隐藏；
+      // 没选过 / 选了视频则什么都不挂（默认就是背景视频）。
+      (function applyWallpaperSource() {
+        const storedSource = localStorage.getItem("wallpaperSource");
+        if (storedSource === "image") {
+          document.documentElement.setAttribute("data-wallpaper-source", "image");
+        }
+      })();
 
       // 初始化期间禁用 content-panel/wrapper 过渡，避免加载时布局/变量变化产生内容移动动画；
       // load 后移除（仅首次设置，swup 切页重跑脚本时不再重复）。布局已由 CSS 接管，无需 rAF 校正

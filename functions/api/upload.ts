@@ -1,18 +1,24 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// 上传接口（图片 / 视频）—— 站内编辑器用
+// 上传接口（图片 / 视频）—— 站内编辑器 / 设置面板用
 //
 //   POST /api/upload
 //   headers: x-admin-password
-//   body: { filename: string, type?: string, data: string }   data = base64（可带 data:...;base64, 前缀）
+//   方式一（推荐，原文件字节直传，不经过 base64，省内存也快）：
+//     headers: content-type: <file.type>, x-filename: <URL 编码的文件名>
+//     body: 原始字节
+//   方式二（老调用方兼容）：
+//     content-type: application/json
+//     body: { filename: string, type?: string, data: string }   data = base64（可带 data:...;base64, 前缀）
 //   -> { ok: true, url: "/uploads/xxx.png", path: "public/uploads/xxx.png", size, note }
 //
 // 为什么要有它：本站是「静态站 + GitHub Actions 构建」，没有对象存储；
 // 能持久化的地方只有仓库本身。所以把二进制通过 Git Data API 写进
 // public/uploads/，构建时原样发布到 /uploads/xxx（和现有的 birds-fly.webp 同一个目录）。
 //
-// 单文件上限 25MB：再大 base64 之后请求体过大，Worker 与 GitHub 都很吃力。
-// 视频建议先压到 1080p；这个接口只负责「能传上去」，不做转码。
+// **不压缩、不转码、不改分辨率**：字节原样进仓库，4K 的图/视频传上去还是 4K。
+// 只有体积上限（站长 2026-10-19 要求「4K 就 4K 上传」，所以把上限从 25MB 提到：
+// 图片 30MB、视频 40MB —— 再大 Worker 内存和 GitHub 接口都扛不住）。
 //
 // 注意：每次上传都会产生一次提交 → 触发一次重新构建（约 1 分钟）。所以编辑器里
 // 提示写的是「上传后约 1 分钟才能在页面上看到」。
@@ -26,7 +32,9 @@ interface Env {
 
 const DEFAULT_REPO = "yokan-haze/yokan-haze-blog";
 const DEFAULT_BRANCH = "main";
-const MAX_BYTES = 25 * 1024 * 1024;
+// 图片与视频分开设上限：图片 30MB 足够放下 4K 原图；视频 40MB 是 Worker 内存的安全线
+const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 40 * 1024 * 1024;
 const UPLOAD_DIR = "public/uploads";
 
 // 只收图片与视频。svg 是文本但按图片存（浏览器直接能显示）。
@@ -44,6 +52,8 @@ const ALLOWED_EXT = new Set([
 	"m4v",
 	"ogg",
 ]);
+
+const VIDEO_EXT = new Set(["mp4", "webm", "mov", "m4v", "ogg"]);
 
 function json(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {
@@ -160,33 +170,70 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 		return json({ ok: false, error: "密码不正确" }, 401);
 	}
 
-	let payload: { filename?: string; type?: string; data?: string };
-	try {
-		payload = (await request.json()) as typeof payload;
-	} catch {
-		return json({ ok: false, error: "不是合法的 JSON" }, 400);
+	// ── 取文件名 + 原始字节 ──
+	// 主路径：原始字节直传（content-type 是图片/视频，文件名放 x-filename 头），
+	// 不经过 base64，省一次 1.33 倍的膨胀（4K 视频尤其明显）。
+	// 兼容：老的 JSON + base64 调用方（/admin/ 早期版本）。
+	const contentType = (request.headers.get("content-type") || "").toLowerCase();
+	let originalName = "";
+	let rawBytes: Uint8Array | null = null;
+	let base64 = "";
+
+	if (contentType.includes("application/json")) {
+		let payload: { filename?: string; type?: string; data?: string };
+		try {
+			payload = (await request.json()) as typeof payload;
+		} catch {
+			return json({ ok: false, error: "不是合法的 JSON" }, 400);
+		}
+		originalName = String(payload.filename || "file");
+		base64 = String(payload.data || "")
+			.replace(/^data:[^,]*,/, "")
+			.replace(/\s/g, "");
+		if (!base64) return json({ ok: false, error: "缺少文件内容" }, 400);
+	} else {
+		// 文件名走 header（URL 编码，避免中文/空格出问题）；没有就退化成 upload.bin
+		const headerName = request.headers.get("x-filename") || "";
+		try {
+			originalName = decodeURIComponent(headerName) || "upload.bin";
+		} catch {
+			originalName = headerName || "upload.bin";
+		}
+		const buf = await request.arrayBuffer();
+		if (!buf.byteLength) return json({ ok: false, error: "文件内容为空" }, 400);
+		rawBytes = new Uint8Array(buf);
 	}
 
-	const originalName = String(payload.filename || "file");
 	const ext = (originalName.match(/\.([A-Za-z0-9]+)$/)?.[1] ?? "").toLowerCase();
 	if (!ALLOWED_EXT.has(ext)) {
 		return json({ ok: false, error: `不支持的文件类型 .${ext || "（无扩展名）"}（只收图片与视频）` }, 400);
 	}
 
-	const base64 = String(payload.data || "")
-		.replace(/^data:[^,]*,/, "")
-		.replace(/\s/g, "");
-	if (!base64) return json({ ok: false, error: "缺少文件内容" }, 400);
-
-	// base64 → 原始字节数（每 4 个字符 3 字节，末尾 "=" 各少 1 字节）
+	// 体积：base64 每 4 个字符 3 字节（末尾 "=" 各少 1 字节）；原始字节直接用长度
 	const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
-	const bytes = Math.floor((base64.length * 3) / 4) - padding;
+	const bytes = rawBytes ? rawBytes.byteLength : Math.floor((base64.length * 3) / 4) - padding;
 	if (bytes <= 0) return json({ ok: false, error: "文件内容为空" }, 400);
-	if (bytes > MAX_BYTES) {
+
+	const isVideo = VIDEO_EXT.has(ext);
+	const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+	if (bytes > maxBytes) {
 		return json(
-			{ ok: false, error: `文件太大（${(bytes / 1048576).toFixed(1)} MB，上限 25 MB）` },
+			{
+				ok: false,
+				error: `文件太大（${(bytes / 1048576).toFixed(1)} MB，${isVideo ? "视频" : "图片"}上限 ${(maxBytes / 1048576).toFixed(0)} MB）—— 接口不做压缩，超限只能先换个体积小一点的源文件`,
+			},
 			413,
 		);
+	}
+
+	// 原始字节 → base64（GitHub 的 blob 接口只收 base64）
+	if (rawBytes) {
+		let binary = "";
+		const CHUNK = 0x8000;
+		for (let i = 0; i < rawBytes.length; i += CHUNK) {
+			binary += String.fromCharCode(...rawBytes.subarray(i, i + CHUNK));
+		}
+		base64 = btoa(binary);
 	}
 
 	const base = slugify(originalName.replace(/\.[^.]+$/, "")) || "media";

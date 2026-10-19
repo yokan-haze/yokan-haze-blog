@@ -114,6 +114,21 @@ async function postJson(url: string, password: string, payload: unknown): Promis
 	return { status: response.status, body: await readJson(response) };
 }
 
+// 二进制上传：文件字节直传（不压缩、不转码），文件名放在 x-filename 里。
+// 走这条路是为了 4K 图片/视频 —— base64 会把请求体撑大 1/3，大文件容易撞上限。
+async function postBinary(url: string, password: string, file: File): Promise<ApiResult> {
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"content-type": file.type || "application/octet-stream",
+			"x-filename": encodeURIComponent(file.name),
+			"x-admin-password": password,
+		},
+		body: file,
+	});
+	return { status: response.status, body: await readJson(response) };
+}
+
 // ── /admin/ 设置保存 ─────────────────────────────────────────
 
 function initSettingsPage(): void {
@@ -455,17 +470,6 @@ function initEditPage(): void {
 		uploadStateEl.textContent = text;
 	};
 
-	const fileToBase64 = (file: File): Promise<string> =>
-		new Promise((resolve, reject) => {
-			const reader = new FileReader();
-			reader.onload = () => {
-				const dataUrl = String(reader.result ?? "");
-				resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
-			};
-			reader.onerror = () => reject(reader.error ?? new Error("读取文件失败"));
-			reader.readAsDataURL(file);
-		});
-
 	const insertAtCursor = (snippet: string): void => {
 		const start = bodyEl.selectionStart ?? bodyEl.value.length;
 		const end = bodyEl.selectionEnd ?? start;
@@ -487,12 +491,8 @@ function initEditPage(): void {
 		rememberPassword(password);
 		setUploadState(`正在上传 ${file.name}（${(file.size / 1048576).toFixed(1)} MB）……`);
 		try {
-			const base64 = await fileToBase64(file);
-			const res = await postJson("/api/upload", password, {
-				filename: file.name,
-				type: file.type,
-				data: base64,
-			});
+			// 原始字节直传（不压缩、不转码）
+			const res = await postBinary("/api/upload", password, file);
 			if (res.body.ok !== true) {
 				setUploadState(`✗ 上传失败：${errText(res.body, res.status)}`);
 				return;
