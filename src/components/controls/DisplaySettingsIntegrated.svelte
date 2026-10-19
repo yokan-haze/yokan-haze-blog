@@ -1712,12 +1712,10 @@ $effect(() => {
 
 		<!-- 全站默认外观：把上面几个 tab 调好的东西存给所有访客（原来只在 /admin/ 里有） -->
 		<div>
-			<div class="section-title">
-				全站默认外观
-				<span class="text-[0.7rem] font-normal opacity-70">主题色 / 壁纸 / 透明度 / 特效 / 卡片</span>
-			</div>
+			<div class="section-title whitespace-nowrap">全站默认外观</div>
 			<div class="text-[0.68rem] leading-5 opacity-60 mb-2">
-				把现在这台设备上调好的外观存成所有人的默认值（用的是上面那个后台密码）。保存后约 1 分钟生效。
+				把现在这台设备上调好的外观（主题色 / 壁纸 / 透明度 / 特效 / 卡片样式）存成所有人的默认值，
+				用的是上面那个后台密码。保存后约 1 分钟生效。
 			</div>
 			<button
 				class="w-full btn-regular rounded-md py-2 text-sm font-medium active:scale-95"
