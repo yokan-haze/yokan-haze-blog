@@ -16,7 +16,7 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import type { NavBarLink } from "@/types/config";
 import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
-import { isHomePage } from "@/utils/layout-utils";
+import { getBackgroundImages, isHomePage } from "@/utils/layout-utils";
 import { resolveNavMenuLinks } from "@/utils/nav-menu-utils";
 import { getAuthorAvatarUrl, getSiteLogo } from "@/utils/schema-image";
 import { url } from "@/utils/url-utils";
@@ -75,6 +75,37 @@ const avatarAbsolute = await getAuthorAvatarUrl();
 const avatarPreviewUrl = avatarAbsolute ? toLocalUrl(avatarAbsolute) : "";
 const logoAbsolute = (await getSiteLogo())?.url ?? "";
 const logoPreviewUrl = logoAbsolute ? toLocalUrl(logoAbsolute) : "";
+
+// 设置面板「壁纸」tab 的缩略预览：当前壁纸（可能是 src 资源 / public 路径 / 外链）
+// 这里把第一张解析成能在浏览器里直接打开的地址，换壁纸后能马上看到缩略图。
+const currentBackground = getBackgroundImages();
+const bgImageFiles = import.meta.glob<ImageMetadata>(
+	"../../**/*.{png,jpg,jpeg,webp,avif,gif}",
+	{ import: "default" },
+);
+async function resolveWallpaperPreview(value: string): Promise<string> {
+	if (!value) return "";
+	if (value.startsWith("http") || value.startsWith("/")) return toLocalUrl(value);
+	const normalized = path.normalize(path.join("../../", value)).replace(/\\/g, "/");
+	const file = bgImageFiles[normalized];
+	if (!file) return "";
+	try {
+		return toLocalUrl((await file()).src);
+	} catch {
+		return "";
+	}
+}
+const wallpaperDesktopPreview = await resolveWallpaperPreview(currentBackground.desktop[0] ?? "");
+const wallpaperMobilePreview = await resolveWallpaperPreview(currentBackground.mobile[0] ?? "");
+// src 可能是字符串/数组，也可能是 { desktop, mobile, playerUrl } —— 防御性取视频地址
+const bgSrcConfig = backgroundWallpaper.src;
+const videoSource =
+	typeof bgSrcConfig === "object" && bgSrcConfig !== null && "playerUrl" in bgSrcConfig
+		? (bgSrcConfig as { playerUrl?: string | string[] }).playerUrl
+		: undefined;
+const wallpaperVideoPreview = toLocalUrl(
+	(Array.isArray(videoSource) ? videoSource[0] : videoSource) ?? "",
+);
 const showThemeColor = displaySettingsConfig.themeColorSwitchable;
 const isWallpaperSwitchable = displaySettingsConfig.wallpaperModeSwitchable;
 const allowLayoutSwitch = displaySettingsConfig.layoutSwitchable;
@@ -255,7 +286,14 @@ const logoVariants = await Promise.all(
                 <MusicPlayer />
             </div>
         )}
-        {isDisplaySettingsEnabled && <DisplaySettings client:load avatarUrl={avatarPreviewUrl} logoUrl={logoPreviewUrl}></DisplaySettings>}
+        {isDisplaySettingsEnabled && <DisplaySettings
+            client:load
+            avatarUrl={avatarPreviewUrl}
+            logoUrl={logoPreviewUrl}
+            wallpaperDesktop={wallpaperDesktopPreview}
+            wallpaperMobile={wallpaperMobilePreview}
+            wallpaperVideo={wallpaperVideoPreview}
+        ></DisplaySettings>}
     </div>
 </div>
 

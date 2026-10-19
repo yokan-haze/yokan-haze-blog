@@ -21,22 +21,30 @@ const wallpapers = wallpapersRaw as {
 	videos?: unknown;
 };
 
-// 壁纸列表由 src/data/wallpapers.json 维护，可在 Pages CMS 后台上传和增删。
-// Pages CMS 写入的路径可能是 "/assets/..." 形式，这里统一去掉开头的斜杠，
-// 转成 Astro 需要的 src 相对路径（"assets/..."），从而享受图片自动优化。
 // 视频列表与壁纸同在一个文件（src/data/wallpapers.json 的 videos 字段），
 // 在 Pages CMS 的「壁纸与背景视频」板块里一起管理。
-// 视频放在 public/ 下（Astro 不处理视频，原样发布），所以这里要的是公共路径 "/assets/videos/x.mp4"。
+// 视频放在 public/ 下（Astro 不处理视频，原样发布），所以这里要的是公共路径 "/assets/videos/x.mp4"
+// —— 设置面板上传的视频同样落在 public/uploads/，加个 "/" 就能直接用。
 const toPublicPath = (list: unknown): string[] =>
 	(Array.isArray(list) ? list : [])
 		.map((p) => String(p).trim())
 		.filter(Boolean)
 		.map((p) => (/^https?:\/\//.test(p) || p.startsWith("/") ? p : "/" + p));
 
+// 壁纸列表由 src/data/wallpapers.json 维护，可在 Pages CMS 后台上传和增删。
+// Pages CMS 写入的路径可能是 "/assets/..." 形式，这里统一去掉开头的斜杠，
+// 转成 Astro 需要的 src 相对路径（"assets/..."），从而享受图片自动优化。
+//
+// 例外：站内「设置」面板上传的壁纸会落在 public/uploads/ 下（不走优化管线），
+// 这种以 "/uploads/" 开头的公共路径必须原样保留 —— 去掉斜杠就找不到文件了。
+// 远程 URL 同样原样保留。
 const toSrcPath = (list: unknown): string[] =>
 	(Array.isArray(list) ? list : [])
-		.map((p) => String(p).replace(/^\/+/, ""))
-		.filter(Boolean);
+		.map((p) => String(p).trim())
+		.filter(Boolean)
+		.map((p) =>
+			/^https?:\/\//.test(p) || p.startsWith("/uploads/") ? p : p.replace(/^\/+/, ""),
+		);
 
 export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	// 壁纸模式："banner" 横幅壁纸，"fullscreen" 全屏壁纸，"overlay" 覆盖透明，"none" 纯色背景无壁纸

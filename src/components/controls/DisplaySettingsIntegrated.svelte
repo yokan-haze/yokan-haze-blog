@@ -79,7 +79,13 @@ type TabKey = "appearance" | "wallpaper" | "effects" | "site";
 
 // 头像 / Logo 的「当前真实 URL」由 Navbar.astro 在构建期解析好传进来
 // （JSON 里存的是 "assets/images/..." 这种 src 源路径，直接当 img src 会 404）。
-let { avatarUrl = "", logoUrl = "" }: { avatarUrl?: string; logoUrl?: string } = $props();
+let { avatarUrl = "", logoUrl = "", wallpaperDesktop = "", wallpaperMobile = "", wallpaperVideo = "" }: {
+	avatarUrl?: string;
+	logoUrl?: string;
+	wallpaperDesktop?: string;
+	wallpaperMobile?: string;
+	wallpaperVideo?: string;
+} = $props();
 
 // 站点外观数据（头像 / Logo / 标题 / 导航栏）—— 由 /api/appearance 写回这份 JSON，
 // 这里读出来做「当前值」，构建期类型是 JSON 推断的，统一放宽成可选字段。
@@ -298,6 +304,120 @@ let adminPassword = $state("");
 let siteBusy = $state(false);
 let siteStatus = $state("");
 
+// ── 壁纸图片 / 背景视频（2026-10-19）────────────────────────────────────
+// 上传后先更新本地预览，点「保存壁纸」才写回 src/data/wallpapers.json（约 1 分钟生效）。
+// 只想改上传哪一项就只提交哪一项，不会把另外两项冲掉。
+let desktopPath = $state("");
+let mobilePath = $state("");
+let videoPath = $state("");
+let desktopPreview = $state(wallpaperDesktop);
+let mobilePreview = $state(wallpaperMobile);
+let videoPreview = $state(wallpaperVideo);
+let wallpaperBusy = $state(false);
+let wallpaperStatus = $state("");
+
+function fileNameOf(url: string): string {
+	if (!url) return "";
+	try {
+		const clean = url.split("?")[0].split("#")[0];
+		return decodeURIComponent(clean.substring(clean.lastIndexOf("/") + 1)) || url;
+	} catch {
+		return url;
+	}
+}
+
+// 壁纸三行：电脑端 / 手机端 / 背景视频
+const WALLPAPER_ROWS: { kind: "desktop" | "mobile" | "video"; label: string; action: string; accept: string }[] = [
+	{ kind: "desktop", label: "电脑端壁纸", action: "换图", accept: "image/*" },
+	{ kind: "mobile", label: "手机端壁纸", action: "换图", accept: "image/*" },
+	{ kind: "video", label: "背景视频", action: "换视频", accept: "video/*" },
+];
+
+async function uploadWallpaper(file: File, kind: "desktop" | "mobile" | "video"): Promise<void> {
+	if (!adminPassword.trim()) {
+		wallpaperStatus = "先填后台密码（上传与保存都要它）";
+		return;
+	}
+	wallpaperStatus = `正在上传 ${file.name}（${(file.size / 1048576).toFixed(1)} MB）……`;
+	try {
+		const data = await readAsBase64(file);
+		const res = await fetch("/api/upload", {
+			method: "POST",
+			headers: { "content-type": "application/json", "x-admin-password": adminPassword.trim() },
+			body: JSON.stringify({ filename: file.name, type: file.type, data }),
+		});
+		const body = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
+		if (!body.ok || !body.url) {
+			wallpaperStatus = `✗ 上传失败：${body.error ?? "HTTP " + res.status}`;
+			return;
+		}
+		if (kind === "desktop") {
+			desktopPath = body.url;
+			desktopPreview = body.url;
+		} else if (kind === "mobile") {
+			mobilePath = body.url;
+			mobilePreview = body.url;
+		} else {
+			videoPath = body.url;
+			videoPreview = body.url;
+		}
+		wallpaperStatus = `✓ 已上传 ${body.url} —— 还要点下面「保存壁纸」才会生效`;
+	} catch (e) {
+		wallpaperStatus = `✗ 上传失败：${String(e)}`;
+	}
+}
+
+async function saveWallpapers(reset = false): Promise<void> {
+	if (!adminPassword.trim()) {
+		wallpaperStatus = "先填后台密码";
+		return;
+	}
+	const payload: Record<string, unknown> = {};
+	if (reset) payload.reset = true;
+	else {
+		if (desktopPath) payload.desktop = desktopPath;
+		if (mobilePath) payload.mobile = mobilePath;
+		if (videoPath) payload.video = videoPath;
+		if (!Object.keys(payload).length) {
+			wallpaperStatus = "还没上传新壁纸";
+			return;
+		}
+	}
+	wallpaperBusy = true;
+	wallpaperStatus = "正在提交……";
+	try {
+		const res = await fetch("/api/wallpapers", {
+			method: "POST",
+			headers: { "content-type": "application/json", "x-admin-password": adminPassword.trim() },
+			body: JSON.stringify(payload),
+		});
+		const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+		if (!body.ok) {
+			wallpaperStatus = `✗ ${body.error ?? "HTTP " + res.status}`;
+			return;
+		}
+		try {
+			localStorage.setItem("adminPassword", adminPassword.trim());
+		} catch {
+			// ignore
+		}
+		wallpaperStatus = reset
+			? "✓ 已恢复默认壁纸，约 1 分钟后生效"
+			: "✓ 已保存，约 1 分钟后换成新壁纸（构建完成前看到的还是旧的）";
+	} catch (e) {
+		wallpaperStatus = `✗ 请求失败：${String(e)}`;
+	} finally {
+		wallpaperBusy = false;
+	}
+}
+
+function onPickWallpaper(event: Event, kind: "desktop" | "mobile" | "video"): void {
+	const input = event.currentTarget as HTMLInputElement | null;
+	const file = input?.files?.[0];
+	if (input) input.value = "";
+	if (file) void uploadWallpaper(file, kind);
+}
+
 onMount(() => {
 	try {
 		adminPassword = localStorage.getItem("adminPassword") ?? "";
@@ -387,10 +507,11 @@ async function saveAppearance(): Promise<void> {
 			},
 		};
 		if (logoValue.trim()) {
+			// 注意：不再下发 valueDark（深色 Logo 的入口已按站长要求删掉），
+			// 服务端看到字段缺省会保留原来的深色 Logo，不会把它清空。
 			payload.logo = {
 				type: "image",
 				value: logoValue.trim(),
-				valueDark: logoValueDark.trim(),
 				alt: appearance.logo?.alt ?? "",
 			};
 		}
@@ -1195,6 +1316,80 @@ $effect(() => {
 			</div>
 		</div>
 		{/if}
+
+		<!-- 壁纸图片 / 背景视频（2026-10-19）：站长要求「里面要有上传图片视频修改壁纸的功能」。
+		     选图后先上传到 public/uploads/ 并预览，「保存壁纸」才写回
+		     src/data/wallpapers.json → 重新构建 → 约 1 分钟生效。 -->
+		<div>
+			<div class="section-title">
+				壁纸图片 / 背景视频
+				<span class="text-[0.7rem] font-normal opacity-70">保存后约 1 分钟生效</span>
+			</div>
+
+			{#each WALLPAPER_ROWS as item (item.kind)}
+				{@const preview =
+					item.kind === "desktop" ? desktopPreview : item.kind === "mobile" ? mobilePreview : videoPreview}
+				{@const pending =
+					item.kind === "desktop" ? desktopPath : item.kind === "mobile" ? mobilePath : videoPath}
+				<div class="flex items-center gap-3 mb-2">
+					<div class="w-14 h-10 rounded-md overflow-hidden bg-(--btn-regular-bg) shrink-0 flex items-center justify-center">
+						{#if preview && item.kind === "video"}
+							<video src={preview} muted playsinline preload="metadata" class="w-full h-full object-cover"></video>
+						{:else if preview}
+							<img src={preview} alt={item.label} class="w-full h-full object-cover" />
+						{:else}
+							<Icon icon="material-symbols:image-outline" class="text-[1.15rem]"></Icon>
+						{/if}
+					</div>
+					<div class="flex-1 min-w-0">
+						<div class="text-sm">{item.label}</div>
+						<div class="text-[0.7rem] opacity-60 truncate">
+							{pending ? "待保存：" + fileNameOf(pending) : fileNameOf(preview) || "未设置"}
+						</div>
+					</div>
+					<label class="btn-regular rounded-md px-3 py-1.5 text-xs cursor-pointer active:scale-95">
+						{item.action}
+						<input
+							type="file"
+							accept={item.accept}
+							class="hidden"
+							onchange={(e) => onPickWallpaper(e, item.kind)}
+						/>
+					</label>
+				</div>
+			{/each}
+
+			<div class="text-[0.68rem] leading-5 opacity-60 mb-2">
+				图片建议 AVIF/WebP（上传的图不走构建期优化，原图多大就多大）；视频请先压到 1080p 以上、≤25MB。
+			</div>
+
+			<input
+				type="password"
+				bind:value={adminPassword}
+				placeholder="后台密码（与 /admin/ 相同）"
+				class="w-full px-2.5 py-1.5 rounded-md bg-(--btn-regular-bg) text-sm text-(--btn-content) mb-2"
+			/>
+			<div class="flex gap-2">
+				<button
+					class="flex-1 btn-regular rounded-md py-2 text-sm font-medium active:scale-95"
+					disabled={wallpaperBusy}
+					onclick={() => void saveWallpapers(false)}
+				>
+					{wallpaperBusy ? "提交中……" : "保存壁纸"}
+				</button>
+				<button
+					class="btn-regular rounded-md px-3 py-2 text-xs active:scale-95"
+					disabled={wallpaperBusy}
+					onclick={() => void saveWallpapers(true)}
+					title="换回仓库里原本那套壁纸（d1-d6 / m1-m6 / 4K 视频）"
+				>
+					恢复默认
+				</button>
+			</div>
+			{#if wallpaperStatus}
+				<div class="text-[0.72rem] leading-5 mt-2 opacity-80">{wallpaperStatus}</div>
+			{/if}
+		</div>
 	{/if}
 
 	<!-- Effects Tab: Sakura -->
@@ -1310,24 +1505,8 @@ $effect(() => {
 				</label>
 			</div>
 
-			<!-- 深色 Logo（可选） -->
-			<div class="flex items-center gap-3 mb-2">
-				<div class="w-12 h-12 rounded-lg overflow-hidden bg-(--btn-regular-bg) flex items-center justify-center shrink-0">
-					{#if logoValueDark.startsWith("/") || logoValueDark.startsWith("http")}
-						<img src={logoValueDark} alt="深色 Logo" class="w-full h-full object-contain p-1" />
-					{:else}
-						<Icon icon="material-symbols:dark-mode-outline-rounded" class="text-[1.25rem]"></Icon>
-					{/if}
-				</div>
-				<div class="flex-1 min-w-0">
-					<div class="text-sm">深色模式 Logo</div>
-					<div class="text-[0.7rem] opacity-60 truncate">{logoValueDark || "留空则与上面共用"}</div>
-				</div>
-				<label class="btn-regular rounded-md px-3 py-1.5 text-xs cursor-pointer active:scale-95">
-					换图
-					<input type="file" accept="image/*" class="hidden" onchange={(e) => onPickFile(e, "logoDark")} />
-				</label>
-			</div>
+			<!-- 深色模式 Logo：站长 2026-10-19 说「可以删除」，这里不再提供入口。
+			     已配置的 valueDark 会原样保留（保存时不下发该字段），导航栏暗色态照旧用原来那张图。 -->
 
 			<!-- 标题 / 副标题 -->
 			<label class="block mb-2">
