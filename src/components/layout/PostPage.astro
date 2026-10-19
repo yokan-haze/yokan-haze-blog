@@ -3,12 +3,8 @@ import type { CollectionEntry } from "astro:content";
 import { getPostUrlBySlug } from "@utils/url-utils";
 import PostCard from "@/components/layout/PostCard.astro";
 import { siteConfig } from "@/config";
-import { Icon } from "astro-icon/components";
 
-// writeEntry：在文章列表末尾补一块「落笔」入口（站长 2026-10-19 要求）。
-// 首页只有置顶的几篇、本子是一页 N 篇 —— 这块空位正好排在最后一张卡片后面；
-// 以后文章变多，它会自动往后挪，不会压在卡片上。
-const { page, writeEntry = false } = Astro.props;
+const { page } = Astro.props;
 
 let delay = 0;
 const interval = 50;
@@ -62,60 +58,8 @@ const coverPositionClass =
       />
     ))
   }
-  {
-    writeEntry && (
-      <a
-        href="/admin/edit/"
-        id="write-entry"
-        class="write-entry onload-animation card-base flex flex-col items-center justify-center gap-1.5 text-center"
-        style={`animation-delay: calc(var(--content-delay) + ${page.data.length * interval}ms);`}
-        aria-label="落笔：写一篇新文章"
-        title="落笔 · 写一篇新文章"
-      >
-        <Icon name="material-symbols:ink-pen" class="text-2xl opacity-60"></Icon>
-        <span class="text-sm font-medium tracking-wide text-90">落笔</span>
-        <span class="text-xs text-50">写一篇新的</span>
-      </a>
-    )
-  }
 </div>
 
-<style>
-  /* 列表末尾的「落笔」位：虚线卡片，尺寸跟文章卡片对齐。
-     网格模式占一格、列表模式占一行（自动跟着成卡片的高度走）。 */
-  .write-entry {
-    display: flex;
-    min-height: 12rem;
-    padding: 1.5rem 1rem;
-    border: 1px dashed color-mix(in srgb, var(--btn-content) 28%, transparent);
-    border-radius: var(--radius-large);
-    background-color: color-mix(in srgb, var(--card-bg) 70%, transparent);
-    transition:
-      border-color 0.2s ease,
-      background-color 0.2s ease,
-      transform 0.2s ease;
-  }
-
-  .write-entry:hover {
-    border-color: var(--primary);
-    background-color: var(--btn-card-bg-hover);
-    transform: translateY(-1px);
-  }
-
-  .write-entry:active {
-    transform: translateY(0);
-  }
-
-  :global(.list-mode) .write-entry {
-    min-height: 6rem;
-    flex-direction: row;
-    gap: 0.6rem;
-  }
-
-  :global(.list-mode) .write-entry span:last-child {
-    display: none;
-  }
-</style>
 
 <!-- 立即执行脚本：防止刷新时的布局闪烁 -->
 <script is:inline define:vars={{ defaultLayout, mobileDefaultLayout, columnWidth }}>
