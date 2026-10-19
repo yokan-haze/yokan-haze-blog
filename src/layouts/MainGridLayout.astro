@@ -183,8 +183,9 @@ const {
 
 <FloatingControls headings={headings} encrypted={encrypted} />
 
-<!-- 写作入口浮动按钮：只在首页与「本子」出现（站长 2026-10-19 要求） -->
-{showWriteFab && <WriteFab />}
+<!-- 写作入口浮动按钮：只在首页与「本子」可见（站长 2026-10-19 要求）。
+     元素始终渲染（首帧用 hidden 控制显不显示），这样软导航来回切页时不会被丢掉。 -->
+<WriteFab hidden={!showWriteFab} />
 
 <!-- 移动端导航抽屉：渲染为 <body> 直系子元素，脱离导航栏的 transform 包含块才能铺满视口 -->
 <NavMenuPanel links={resolveNavMenuLinks()} />

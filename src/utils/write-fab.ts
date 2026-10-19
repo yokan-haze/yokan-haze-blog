@@ -29,7 +29,11 @@ function currentPathname(): string {
 function applyWriteFabVisibility(): void {
 	const el = document.getElementById("write-fab");
 	if (!el) return;
-	el.style.display = shouldShowWriteFab(currentPathname()) ? "" : "none";
+	const show = shouldShowWriteFab(currentPathname());
+	el.style.display = show ? "" : "none";
+	// 无障碍：隐藏时也不该被读屏/键盘读到（display:none 本身已经够，这里只是双保险）
+	el.toggleAttribute("aria-hidden", !show);
+	el.tabIndex = show ? 0 : -1;
 }
 
 export function initWriteFabVisibility(): void {

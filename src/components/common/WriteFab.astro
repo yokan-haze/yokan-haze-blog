@@ -8,9 +8,16 @@ import { Icon } from "astro-icon/components";
 // 所以现在是**跟主题浮动控件同款的玻璃胶囊**（card-base 那套变量），
 // 文字用正文色而不是主题色，只在 hover 时加深底色 —— 不再是绿块。
 //
-// 显隐：只在**首页**和**本子**（/notebook/ 及其分页）出现，其它页面一律不渲染。
-// SSR 由 MainGridLayout 判断路径；软导航（swup）时由 src/utils/write-fab.ts 补一刀
-// —— 因为这个元素在 swup 容器之外，切页不会被替换掉。
+// 显隐：只在**首页**和**本子**（/notebook/ 及其分页）出现，其它页面一律看不到。
+// 做法：这个元素永远渲染在 swup 容器之外（所以软导航不会把它换掉/丢掉），
+// 首帧用 SSR 的 style 直接定生死（不会闪），切页后由 src/utils/write-fab.ts
+// 监听 astro:page-load / swup:page:view 按当前地址重新校正。
+// ⚠ 不能只在目标页面渲染这个元素：从文章页软导航回本子时，swup 只替换容器内容，
+// 容器之外的元素不会被「补回来」—— 站长会遇到「本子里看不见落笔」。
+interface Props {
+	hidden?: boolean;
+}
+const { hidden = false } = Astro.props;
 ---
 <a
   id="write-fab"
@@ -18,6 +25,8 @@ import { Icon } from "astro-icon/components";
   aria-label="落笔：写一篇新文章"
   title="落笔 · 写一篇新文章"
   class="fixed z-40 flex items-center gap-2 rounded-full"
+  style={hidden ? "display: none" : undefined}
+  data-write-fab-boot={hidden ? "hidden" : "shown"}
 >
   <Icon name="material-symbols:ink-pen" class="write-fab-icon text-[1.05rem]" aria-hidden="true" />
   <span class="write-fab-label text-sm font-medium tracking-wide">落笔</span>
