@@ -93,8 +93,7 @@ async function resolveWallpaperPreview(value: string): Promise<string> {
 	const file = bgImageFiles[normalized];
 	if (!file) return "";
 	try {
-		const meta = typeof file === "function" ? await file() : file;
-		return toLocalUrl(meta.src);
+		return toLocalUrl(file.src);
 	} catch {
 		return "";
 	}
