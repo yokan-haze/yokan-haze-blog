@@ -4,7 +4,6 @@ import * as path from "node:path";
 import type { ImageMetadata } from "astro";
 import { Icon } from "astro-icon/components";
 import DisplaySettings from "@/components/controls/DisplaySettingsIntegrated.svelte";
-import LightDarkSwitch from "@/components/controls/LightDarkSwitch.svelte";
 import Search from "@/components/controls/Search.svelte";
 import MusicPlayer from "@/components/features/MusicPlayer.astro";
 import {
@@ -19,6 +18,7 @@ import type { NavBarLink } from "@/types/config";
 import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
 import { isHomePage } from "@/utils/layout-utils";
 import { resolveNavMenuLinks } from "@/utils/nav-menu-utils";
+import { getAuthorAvatarUrl, getSiteLogo } from "@/utils/schema-image";
 import { url } from "@/utils/url-utils";
 import DropdownMenu from "./DropdownMenu.astro";
 
@@ -59,6 +59,22 @@ const isNavbarMenuCentered = navbarMenuAlign === "center";
 
 // 检查是否有任何显示设置可用（总开关关闭时下方各项均为 false）
 const isDisplaySettingsEnabled = displaySettingsConfig.enable;
+
+// 设置面板「站点」tab 里的头像 / Logo 预览：用构建期解析好的真实 URL，
+// 直接把 JSON 里的 "assets/images/avatar.webp" 当 src 会 404（那是 src 下的源文件）。
+// 这两个 helper 返回的是绝对 URL（带站点域名），预览只需要站内相对路径，
+// 去掉 origin 才能在本地预览 / 正式站都用同一份产物。
+const toLocalUrl = (value: string): string => {
+	try {
+		return new URL(value).pathname;
+	} catch {
+		return value;
+	}
+};
+const avatarAbsolute = await getAuthorAvatarUrl();
+const avatarPreviewUrl = avatarAbsolute ? toLocalUrl(avatarAbsolute) : "";
+const logoAbsolute = (await getSiteLogo())?.url ?? "";
+const logoPreviewUrl = logoAbsolute ? toLocalUrl(logoAbsolute) : "";
 const showThemeColor = displaySettingsConfig.themeColorSwitchable;
 const isWallpaperSwitchable = displaySettingsConfig.wallpaperModeSwitchable;
 const allowLayoutSwitch = displaySettingsConfig.layoutSwitchable;
@@ -221,13 +237,14 @@ const logoVariants = await Promise.all(
                         <span class="bg-player-icon-pause hidden"><Icon name="material-symbols:pause-rounded" class="text-[1.5rem]" /></span>
                     </button>
                 )}
+                {/* 2026-10-19：站长要求把「主题色」和「明暗」两个按钮合并成一个「设置」入口，
+                    壁纸 / 明暗 / 头像 / Logo / 标题 / 导航栏都在这个面板里（站点 tab）。
+                    保留 id 不变，浮动面板的开关脚本继续按这个 id 找按钮。 */}
                 {hasDisplaySettings && (
-                        <button aria-label="Display Settings" aria-controls="display-setting" aria-expanded="false" class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90" id="display-settings-switch">
-                            <Icon name="material-symbols:palette-outline" class="text-[1.25rem]"></Icon>
+                        <button aria-label="设置" title="设置" aria-controls="display-setting" aria-expanded="false" class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90" id="display-settings-switch">
+                            <Icon name="material-symbols:settings-rounded" class="text-[1.25rem]"></Icon>
                         </button>
                 )}
-                {/* @ts-ignore */}
-                <LightDarkSwitch client:load></LightDarkSwitch>
                 <button aria-label="Menu" aria-controls="nav-menu-panel" aria-expanded="false" name="Nav Menu" class="btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90 lg:hidden!" id="nav-menu-switch">
                     <Icon name="material-symbols:menu-rounded" class="text-[1.25rem]"></Icon>
                 </button>
@@ -238,7 +255,7 @@ const logoVariants = await Promise.all(
                 <MusicPlayer />
             </div>
         )}
-        {isDisplaySettingsEnabled && <DisplaySettings client:load></DisplaySettings>}
+        {isDisplaySettingsEnabled && <DisplaySettings client:load avatarUrl={avatarPreviewUrl} logoUrl={logoPreviewUrl}></DisplaySettings>}
     </div>
 </div>
 
@@ -318,21 +335,14 @@ function loadButtonScript() {
         }
     }
 
-    let themeSwitchBtn = document.getElementById("scheme-switch");
-    if (themeSwitchBtn) {
-        themeSwitchBtn.onclick = function () {
-            let themePanel = document.getElementById("theme-mode-panel");
-            if (themePanel) {
-                themePanel.classList.toggle("float-panel-closed");
-            }
-        };
-    }
+    // 2026-10-19：明暗切换已经并进「设置」面板的站点 tab，独立的 theme 下拉不再存在，
+    // 因此这里不再绑定 scheme-switch / theme-mode-panel。
 
     document.addEventListener("click", function(event) {
         // nav-menu-panel 不再走点击外部关闭：面板现在覆盖全屏（inset-0），任意点击都在面板内，
         // 该监听永不触发；关闭由抽屉自己的遮罩点击/Document 委托负责。
-        const panels = ["display-setting", "music-nav-panel", "theme-mode-panel"];
-        const buttons = ["display-settings-switch", "music-player-switch", "scheme-switch"];
+        const panels = ["display-setting", "music-nav-panel"];
+        const buttons = ["display-settings-switch", "music-player-switch"];
 
         panels.forEach((id, index) => {
             const panel = document.getElementById(id);

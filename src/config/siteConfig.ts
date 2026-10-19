@@ -20,6 +20,13 @@ type SiteAppearanceJson = {
 		valueDark?: string;
 		alt?: string;
 	};
+	// 导航栏外观：2026-10-19 起可在站内「设置」面板里改（写入本文件后重建生效）
+	navbar?: {
+		mode?: string;
+		widthFull?: boolean;
+		transparentMode?: string;
+		blur?: number;
+	};
 };
 
 const siteAppearance = siteAppearanceRaw as SiteAppearanceJson;
@@ -141,7 +148,8 @@ export const siteConfig: SiteConfig = {
 		// 导航栏标题
 		title: "yokan-haze",
 		// 全宽导航栏，导航栏是否占满屏幕宽度
-		widthFull: false,
+		// 由 src/data/siteAppearance.json 的 navbar.widthFull 维护（站内「设置」面板可改）
+		widthFull: siteAppearance.navbar?.widthFull ?? false,
 		// 导航菜单对齐方式，left：左对齐，center：居中
 		menuAlign: "center",
 		// 导航栏图标和标题是否跟随主题色
@@ -150,7 +158,11 @@ export const siteConfig: SiteConfig = {
 		// "static"：不固定，随页面滚动消失
 		// "fixed"：固定在顶部常显
 		// "dynamic"：固定在顶部，下滑隐藏、轻微上滑显示
-		navbarMode: "dynamic",
+		// 由 src/data/siteAppearance.json 的 navbar.mode 维护（站内「设置」面板可改）
+		navbarMode: (siteAppearance.navbar?.mode ?? "dynamic") as
+			| "static"
+			| "fixed"
+			| "dynamic",
 	},
 
 	// 站点开始日期，用于统计运行天数

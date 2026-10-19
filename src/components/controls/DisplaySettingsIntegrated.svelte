@@ -4,7 +4,11 @@ import {
 	WALLPAPER_FULLSCREEN,
 	WALLPAPER_NONE,
 	WALLPAPER_OVERLAY,
+	DARK_MODE,
+	LIGHT_MODE,
+	SYSTEM_MODE,
 } from "@constants/constants";
+import siteAppearanceRaw from "@/data/siteAppearance.json";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import {
@@ -31,8 +35,10 @@ import {
 	getStoredOverlayCardOpacity,
 	getStoredOverlayOpacity,
 	getStoredSakuraEnabled,
+	getStoredTheme,
 	getStoredWallpaperMode,
 	getStoredWavesEnabled,
+	setTheme,
 	setBannerCarouselEnabled,
 	setBannerTitleEnabled,
 	setCardBorderEnabled,
@@ -54,7 +60,7 @@ import {
 	displaySettingsConfig,
 	siteConfig,
 } from "@/config";
-import type { FullscreenWallpaperLayout, WALLPAPER_MODE } from "@/types/config";
+import type { FullscreenWallpaperLayout, LIGHT_DARK_MODE, WALLPAPER_MODE } from "@/types/config";
 
 type OverlaySliderItem = {
 	key: "opacity" | "blur" | "cardOpacity";
@@ -69,7 +75,22 @@ type OverlaySliderItem = {
 	onValueChange: (value: number) => void;
 };
 
-type TabKey = "appearance" | "wallpaper" | "effects";
+type TabKey = "appearance" | "wallpaper" | "effects" | "site";
+
+// 头像 / Logo 的「当前真实 URL」由 Navbar.astro 在构建期解析好传进来
+// （JSON 里存的是 "assets/images/..." 这种 src 源路径，直接当 img src 会 404）。
+let { avatarUrl = "", logoUrl = "" }: { avatarUrl?: string; logoUrl?: string } = $props();
+
+// 站点外观数据（头像 / Logo / 标题 / 导航栏）—— 由 /api/appearance 写回这份 JSON，
+// 这里读出来做「当前值」，构建期类型是 JSON 推断的，统一放宽成可选字段。
+type AppearanceJson = {
+	avatar?: string;
+	title?: string;
+	subtitle?: string;
+	logo?: { type?: string; value?: string; valueDark?: string; alt?: string };
+	navbar?: { mode?: string; widthFull?: boolean; transparentMode?: string; blur?: number };
+};
+const appearance = siteAppearanceRaw as AppearanceJson;
 
 let hue = $state(getHue());
 const defaultHue = getDefaultHue();
@@ -192,15 +213,9 @@ let cardSettingsIsDefault = $derived(
 			cardFollowThemeEnabled === defaultCardFollowThemeEnabled),
 );
 
-const hasAnyContent = $derived(
-	showThemeColor ||
-		isWallpaperSwitchable ||
-		isFullscreenLayoutSwitchable ||
-		allowLayoutSwitch ||
-		hasBannerSettings ||
-		hasOverlaySettings ||
-		isSakuraSwitchable,
-);
+// 站点 tab（头像 / Logo / 标题 / 导航栏 / 明暗）始终存在，所以面板永远有内容。
+// 其它开关仍然决定「外观 / 壁纸 / 特效」三个 tab 是否出现。
+const hasAnyContent = true;
 
 // --- Tab visibility ---
 const hasAppearanceTab = $derived(
@@ -241,11 +256,166 @@ let visibleTabs = $derived.by(() => {
 			icon: "mdi:flower-poppy",
 			label: i18n(I18nKey.settingsTabEffects),
 		});
+	// 站点外观（头像 / Logo / 标题 / 导航栏 / 明暗）—— 2026-10-19 新增，始终可见
+	tabs.push({
+		key: "site",
+		icon: "material-symbols:settings-rounded",
+		label: "站点",
+	});
 	return tabs;
 });
 
 let showTabBar = $derived(visibleTabs.length > 1);
 let activeTab = $state<TabKey>("appearance");
+
+// ── 站点 tab（2026-10-19 新增）─────────────────────────────────────────
+// 头像 / Logo / 标题 / 导航栏外观 = 构建期数据（src/data/siteAppearance.json）。
+// 在这个面板里改完点「保存到站点」，会调用 /api/appearance 写回仓库并触发重建
+// （约 1 分钟生效）。上传图片复用 /api/upload，和其它后台接口共用 ADMIN_PASSWORD。
+// 明暗模式是**本机即时生效**（localStorage），不写入仓库。
+let themeMode = $state<LIGHT_DARK_MODE>(
+	typeof window !== "undefined" ? getStoredTheme() : LIGHT_MODE,
+);
+let avatarRaw = $state(appearance.avatar ?? "");
+let avatarPreview = $state(avatarUrl);
+let logoValue = $state(appearance.logo?.value ?? "");
+let logoValueDark = $state(appearance.logo?.valueDark ?? "");
+// Logo 预览：刚上传的 /uploads 路径直接能用；否则用构建期解析好的 URL
+let logoPreview = $state(
+	logoValue.startsWith("/") || logoValue.startsWith("http") ? logoValue : logoUrl,
+);
+let siteTitleValue = $state(appearance.title ?? siteConfig.title);
+let siteSubtitleValue = $state(appearance.subtitle ?? "");
+let navbarStyle = $state<"semi" | "semifull" | "none">(
+	(backgroundWallpaper.banner?.navbar?.transparentMode ?? "semi") as "semi" | "semifull" | "none",
+);
+let navbarBlur = $state(backgroundWallpaper.banner?.navbar?.blur ?? 12);
+let navbarFull = $state(siteConfig.navbar.widthFull === true);
+let navbarModeValue = $state<"static" | "fixed" | "dynamic">(
+	(siteConfig.navbar.navbarMode ?? "dynamic") as "static" | "fixed" | "dynamic",
+);
+let adminPassword = $state("");
+let siteBusy = $state(false);
+let siteStatus = $state("");
+
+onMount(() => {
+	try {
+		adminPassword = localStorage.getItem("adminPassword") ?? "";
+	} catch {
+		// 隐私模式读不到就算了
+	}
+	themeMode = getStoredTheme();
+});
+
+function pickTheme(next: LIGHT_DARK_MODE): void {
+	themeMode = next;
+	setTheme(next);
+}
+
+function onPickFile(event: Event, target: "avatar" | "logo" | "logoDark"): void {
+	const input = event.currentTarget as HTMLInputElement | null;
+	const file = input?.files?.[0];
+	if (input) input.value = "";
+	if (file) void uploadForSite(file, target);
+}
+
+async function readAsBase64(file: File): Promise<string> {
+	const dataUrl = await new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result ?? ""));
+		reader.onerror = () => reject(reader.error);
+		reader.readAsDataURL(file);
+	});
+	return dataUrl.slice(dataUrl.indexOf(",") + 1);
+}
+
+async function uploadForSite(file: File, target: "avatar" | "logo" | "logoDark"): Promise<void> {
+	if (!adminPassword.trim()) {
+		siteStatus = "先填后台密码（上传与保存都要它）";
+		return;
+	}
+	siteStatus = `正在上传 ${file.name}（${(file.size / 1048576).toFixed(1)} MB）……`;
+	try {
+		const data = await readAsBase64(file);
+		const res = await fetch("/api/upload", {
+			method: "POST",
+			headers: { "content-type": "application/json", "x-admin-password": adminPassword.trim() },
+			body: JSON.stringify({ filename: file.name, type: file.type, data }),
+		});
+		const body = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string; error?: string };
+		if (!body.ok || !body.url) {
+			siteStatus = `✗ 上传失败：${body.error ?? "HTTP " + res.status}`;
+			return;
+		}
+		if (target === "avatar") {
+			avatarRaw = body.url;
+			avatarPreview = body.url;
+		} else if (target === "logo") {
+			logoValue = body.url;
+			logoPreview = body.url;
+		} else {
+			logoValueDark = body.url;
+		}
+		siteStatus = `✓ 已上传 ${body.url} —— 还要点下面「保存到站点」才会生效`;
+	} catch (e) {
+		siteStatus = `✗ 上传失败：${String(e)}`;
+	}
+}
+
+async function saveAppearance(): Promise<void> {
+	if (!adminPassword.trim()) {
+		siteStatus = "先填后台密码";
+		return;
+	}
+	if (!siteTitleValue.trim()) {
+		siteStatus = "站点标题不能为空";
+		return;
+	}
+	siteBusy = true;
+	siteStatus = "正在提交……";
+	try {
+		// Logo 没设就不提交：避免把导航栏 Logo 清空
+		const payload: Record<string, unknown> = {
+			avatar: avatarRaw,
+			title: siteTitleValue.trim(),
+			subtitle: siteSubtitleValue.trim(),
+			navbar: {
+				mode: navbarModeValue,
+				widthFull: navbarFull,
+				transparentMode: navbarStyle,
+				blur: navbarBlur,
+			},
+		};
+		if (logoValue.trim()) {
+			payload.logo = {
+				type: "image",
+				value: logoValue.trim(),
+				valueDark: logoValueDark.trim(),
+				alt: appearance.logo?.alt ?? "",
+			};
+		}
+		const res = await fetch("/api/appearance", {
+			method: "POST",
+			headers: { "content-type": "application/json", "x-admin-password": adminPassword.trim() },
+			body: JSON.stringify(payload),
+		});
+		const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+		if (!body.ok) {
+			siteStatus = `✗ ${body.error ?? "HTTP " + res.status}`;
+			return;
+		}
+		try {
+			localStorage.setItem("adminPassword", adminPassword.trim());
+		} catch {
+			// ignore
+		}
+		siteStatus = "✓ 已保存，约 1 分钟后全站生效（构建完成前看到的还是旧值）";
+	} catch (e) {
+		siteStatus = `✗ 请求失败：${String(e)}`;
+	} finally {
+		siteBusy = false;
+	}
+}
 
 // Auto-switch active tab if it becomes invisible
 $effect(() => {
@@ -1059,6 +1229,216 @@ $effect(() => {
 			</button>
 		</div>
 		{/if}
+	{/if}
+
+	<!-- 站点 Tab（2026-10-19）：明暗 / 头像 / Logo / 标题 / 导航栏 / 保存到站点 -->
+	{#if activeTab === "site"}
+		<!-- 明暗：本机即时生效 -->
+		<div>
+			<div class="section-title">明暗模式</div>
+			<div class="text-[0.7rem] text-(--btn-content) opacity-70 mb-2">只对这台设备生效，不写入站点</div>
+			<div class="grid grid-cols-3 gap-2">
+				<button
+					class="btn-regular rounded-md py-2 flex flex-col items-center gap-1 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={themeMode === LIGHT_MODE}
+					onclick={() => pickTheme(LIGHT_MODE)}
+				>
+					<Icon icon="material-symbols:wb-sunny-outline-rounded" class="text-[1.15rem]"></Icon>
+					浅色
+				</button>
+				<button
+					class="btn-regular rounded-md py-2 flex flex-col items-center gap-1 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={themeMode === DARK_MODE}
+					onclick={() => pickTheme(DARK_MODE)}
+				>
+					<Icon icon="material-symbols:dark-mode-outline-rounded" class="text-[1.15rem]"></Icon>
+					深色
+				</button>
+				<button
+					class="btn-regular rounded-md py-2 flex flex-col items-center gap-1 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={themeMode === SYSTEM_MODE}
+					onclick={() => pickTheme(SYSTEM_MODE)}
+				>
+					<Icon icon="material-symbols:brightness-auto-outline-rounded" class="text-[1.15rem]"></Icon>
+					跟随系统
+				</button>
+			</div>
+		</div>
+
+		<!-- 站点外观：头像 / Logo / 标题 / 副标题 -->
+		<div>
+			<div class="section-title">
+				站点外观
+				<span class="text-[0.7rem] font-normal opacity-70">保存后约 1 分钟生效</span>
+			</div>
+
+			<!-- 头像 -->
+			<div class="flex items-center gap-3 mb-2">
+				<div class="w-12 h-12 rounded-full overflow-hidden bg-(--btn-regular-bg) flex items-center justify-center shrink-0">
+					{#if avatarPreview}
+						<img src={avatarPreview} alt="站点头像" class="w-full h-full object-cover" />
+					{:else}
+						<Icon icon="material-symbols:person" class="text-[1.25rem]"></Icon>
+					{/if}
+				</div>
+				<div class="flex-1 min-w-0">
+					<div class="text-sm">头像</div>
+					<div class="text-[0.7rem] opacity-60 truncate">{avatarRaw || "未设置"}</div>
+				</div>
+				<label class="btn-regular rounded-md px-3 py-1.5 text-xs cursor-pointer active:scale-95">
+					换图
+					<input type="file" accept="image/*" class="hidden" onchange={(e) => onPickFile(e, "avatar")} />
+				</label>
+			</div>
+
+			<!-- 导航栏 Logo -->
+			<div class="flex items-center gap-3 mb-2">
+				<div class="w-12 h-12 rounded-lg overflow-hidden bg-(--btn-regular-bg) flex items-center justify-center shrink-0">
+					{#if logoPreview}
+						<img src={logoPreview} alt="站点 Logo" class="w-full h-full object-contain p-1" />
+					{:else}
+						<Icon icon="material-symbols:image-outline" class="text-[1.25rem]"></Icon>
+					{/if}
+				</div>
+				<div class="flex-1 min-w-0">
+					<div class="text-sm">导航栏 Logo</div>
+					<div class="text-[0.7rem] opacity-60 truncate">{logoValue || "未设置"}</div>
+				</div>
+				<label class="btn-regular rounded-md px-3 py-1.5 text-xs cursor-pointer active:scale-95">
+					换图
+					<input type="file" accept="image/*" class="hidden" onchange={(e) => onPickFile(e, "logo")} />
+				</label>
+			</div>
+
+			<!-- 深色 Logo（可选） -->
+			<div class="flex items-center gap-3 mb-2">
+				<div class="w-12 h-12 rounded-lg overflow-hidden bg-(--btn-regular-bg) flex items-center justify-center shrink-0">
+					{#if logoValueDark.startsWith("/") || logoValueDark.startsWith("http")}
+						<img src={logoValueDark} alt="深色 Logo" class="w-full h-full object-contain p-1" />
+					{:else}
+						<Icon icon="material-symbols:dark-mode-outline-rounded" class="text-[1.25rem]"></Icon>
+					{/if}
+				</div>
+				<div class="flex-1 min-w-0">
+					<div class="text-sm">深色模式 Logo</div>
+					<div class="text-[0.7rem] opacity-60 truncate">{logoValueDark || "留空则与上面共用"}</div>
+				</div>
+				<label class="btn-regular rounded-md px-3 py-1.5 text-xs cursor-pointer active:scale-95">
+					换图
+					<input type="file" accept="image/*" class="hidden" onchange={(e) => onPickFile(e, "logoDark")} />
+				</label>
+			</div>
+
+			<!-- 标题 / 副标题 -->
+			<label class="block mb-2">
+				<div class="text-sm mb-1">站点标题</div>
+				<input
+					bind:value={siteTitleValue}
+					maxlength="40"
+					placeholder="例如：yokan-haze"
+					class="w-full px-2.5 py-1.5 rounded-md bg-(--btn-regular-bg) text-sm text-(--btn-content)"
+				/>
+			</label>
+			<label class="block mb-1">
+				<div class="text-sm mb-1">副标题（首页大标题下面那句）</div>
+				<input
+					bind:value={siteSubtitleValue}
+					maxlength="80"
+					placeholder="例如：记录，然后忘记"
+					class="w-full px-2.5 py-1.5 rounded-md bg-(--btn-regular-bg) text-sm text-(--btn-content)"
+				/>
+			</label>
+		</div>
+
+		<!-- 导航栏外观 -->
+		<div>
+			<div class="section-title">导航栏</div>
+
+			<div class="text-sm mb-1">透明程度</div>
+			<div class="grid grid-cols-3 gap-2 mb-2">
+				<button
+					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={navbarStyle === "none"}
+					onclick={() => (navbarStyle = "none")}>纯色</button
+				>
+				<button
+					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={navbarStyle === "semi"}
+					onclick={() => (navbarStyle = "semi")}>半透明</button
+				>
+				<button
+					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={navbarStyle === "semifull"}
+					onclick={() => (navbarStyle = "semifull")}>动态透明</button
+				>
+			</div>
+
+			<div class="text-sm mb-1">固定方式</div>
+			<div class="grid grid-cols-3 gap-2 mb-2">
+				<button
+					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={navbarModeValue === "fixed"}
+					onclick={() => (navbarModeValue = "fixed")}>常显</button
+				>
+				<button
+					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={navbarModeValue === "dynamic"}
+					onclick={() => (navbarModeValue = "dynamic")}>下滑隐藏</button
+				>
+				<button
+					class="btn-regular rounded-md py-1.5 text-xs active:scale-95"
+					class:bg-(--btn-regular-bg-hover)={navbarModeValue === "static"}
+					onclick={() => (navbarModeValue = "static")}>随页滚动</button
+				>
+			</div>
+
+			<div class="flex items-center justify-between text-sm mb-1">
+				<span>毛玻璃模糊度</span>
+				<span class="tabular-nums opacity-70">{navbarBlur}</span>
+			</div>
+			<input type="range" min="0" max="24" step="1" bind:value={navbarBlur} class="slider w-full mb-2" />
+
+			<button
+				class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95"
+				class:bg-(--btn-regular-bg-hover)={navbarFull}
+				onclick={() => (navbarFull = !navbarFull)}
+			>
+				<Icon icon="material-symbols:width-full" class="text-[1.15rem] shrink-0"></Icon>
+				<span class="text-sm flex-1">导航栏满宽</span>
+				<div
+					class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					class:bg-(--primary)={navbarFull}
+					class:bg-(--btn-regular-bg-active)={!navbarFull}
+				>
+					<div
+						class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+						class:left-0.5={!navbarFull}
+						class:left-5={navbarFull}
+					></div>
+				</div>
+			</button>
+		</div>
+
+		<!-- 保存到站点 -->
+		<div>
+			<div class="section-title">保存到站点</div>
+			<input
+				type="password"
+				bind:value={adminPassword}
+				placeholder="后台密码（与 /admin/ 相同）"
+				class="w-full px-2.5 py-1.5 rounded-md bg-(--btn-regular-bg) text-sm text-(--btn-content) mb-2"
+			/>
+			<button
+				class="w-full btn-regular rounded-md py-2 text-sm font-medium active:scale-95"
+				disabled={siteBusy}
+				onclick={() => void saveAppearance()}
+			>
+				{siteBusy ? "提交中……" : "保存到站点（约 1 分钟生效）"}
+			</button>
+			{#if siteStatus}
+				<div class="text-[0.72rem] leading-5 mt-2 opacity-80">{siteStatus}</div>
+			{/if}
+		</div>
 	{/if}
 </div>
 {/if}

@@ -1,7 +1,14 @@
 import type { BackgroundWallpaperConfig } from "@/types/backgroundWallpaper";
+import siteAppearanceRaw from "@/data/siteAppearance.json";
 import wallpapersRaw from "@/data/wallpapers.json";
 import socialLinksRaw from "@/data/socialLinks.json";
 import { siteSettings } from "@/utils/site-settings";
+
+// 导航栏外观（2026-10-19 起可由站内「设置」面板写入 src/data/siteAppearance.json，
+// 与头像 / Logo / 标题同源）。同样是防御性读取：键可能被清空。
+const navbarAppearance =
+	(siteAppearanceRaw as { navbar?: { transparentMode?: string; blur?: number } })
+		.navbar ?? {};
 
 // ⚠️ 防御性读取：Pages CMS 保存时会丢掉空值字段（例如把所有背景视频都删掉时，
 // videos 这个键会从 JSON 里消失）。键一旦消失，TypeScript 从 JSON 推断的类型就变了，
@@ -178,10 +185,14 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 导航栏配置
 		navbar: {
 			// 导航栏透明模式："semi" 半透明，"semifull" 动态透明，"none" 纯色不透明
-			transparentMode: "semi",
+			// 由 src/data/siteAppearance.json 的 navbar.transparentMode 维护（站内「设置」面板可改）
+			transparentMode: (navbarAppearance.transparentMode ?? "semi") as
+				| "semi"
+				| "semifull"
+				| "none",
 			// 毛玻璃模糊度，0 即关闭导航栏的毛玻璃
 			// 注意：导航栏子菜单与浮动面板始终保留毛玻璃，模糊度跟随此项但有最小值
-			blur: 12,
+			blur: typeof navbarAppearance.blur === "number" ? navbarAppearance.blur : 12,
 		},
 	},
 	// 覆盖透明覆盖模式特有配置

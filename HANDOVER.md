@@ -173,6 +173,53 @@
 
 下次改动前如果又隔了几天，先跑一遍 sync-posts.mjs 与 sync-settings.mjs 再动手。
 
+## 二·补三：2026-10-19 右上角「设置」面板
+
+站长发来右上角「调色盘 + 太阳」两个图标的截图，要求：「弄一个设置插件，里面要有壁纸修改，
+把这两个也一并弄进去，还有头像、logo、标题、站点外观头像、导航栏修改都要在里面」。
+
+### 做法：合并成一个齿轮入口 + 原显示面板加「站点」tab
+
+- **右上角只剩一个按钮**：`src/components/layout/Navbar.astro` 里原来的
+  `#display-settings-switch`（调色盘）和 `LightDarkSwitch`（太阳 + `#theme-mode-panel` 下拉）
+  合并成**一个齿轮按钮**（仍然沿用 `id="display-settings-switch"`，浮动面板的开关脚本不用改）。
+  太阳那个下拉已删除，明暗改到面板里。
+- **面板本体**是 `src/components/controls/DisplaySettingsIntegrated.svelte`，现在 4 个 tab：
+  - 外观：主题色相 / 文章布局 / 卡片样式（原有）
+  - 壁纸：壁纸模式 + 透明度 / 背景模糊 / 卡片透明度（原有）
+  - 特效：樱花（原有）
+  - **站点**（新增）：明暗三选（浅色 / 深色 / 跟随系统，只对本机生效）、
+    头像、导航栏 Logo、深色模式 Logo（各自可「换图」上传）、站点标题、副标题、
+    导航栏（透明程度 / 固定方式 / 毛玻璃模糊度 / 满宽）、后台密码 + 「保存到站点」
+- 为了加 tab：`TabKey` 加了 `"site"`、`visibleTabs` 里总是 push 站点 tab、
+  `hasAnyContent` 改成恒 `true`（站点 tab 永远存在）。
+
+### 数据与接口
+
+- `src/data/siteAppearance.json` 新增 `navbar: { mode, widthFull, transparentMode, blur }`；
+  `siteConfig.ts`（navbarMode / widthFull）和 `backgroundWallpaper.ts`（banner.navbar 的
+  transparentMode / blur）改成从这里读（防御性读取 + 默认值）。
+- **新接口 `functions/api/appearance.ts`**：`POST /api/appearance`（ADMIN_PASSWORD 鉴权）
+  把头像 / Logo / 标题 / 副标题 / 导航栏写回 `src/data/siteAppearance.json`：
+  - 只覆盖调用方给的那几个键，其它键原样保留（避免把 Pages CMS 写的字段冲掉）
+  - 地址白名单：只允许 `assets/`、`/`、`http(s)://`，且拒绝 `..`（挡 `javascript:`）
+  - 标题 1-40 字、副标题 ≤80 字、模糊度 0-24、导航栏模式/透明度的枚举校验
+  - 写出 2 空格缩进 + 末尾换行的 JSON，和仓库里现有格式一致
+- 上传复用 **`/api/upload`**（写 `public/uploads/`），选图后回填地址 + 预览，再点「保存到站点」。
+- **一个坑**：`siteAppearance.json` 里的头像是 `assets/images/avatar.webp`（src 源路径），
+  直接当 `<img src>` 会 404。预览用的 URL 在 `Navbar.astro` 构建期用
+  `getAuthorAvatarUrl()` / `getSiteLogo()` 解析，再去掉 origin 变成站内相对路径传进组件
+  （`avatarUrl` / `logoUrl` 两个 props）。否则面板里就是一个裂图的圆圈。
+
+### 验证
+
+- `verify-settings-panel.mjs`（headless Chrome）：齿轮存在、旧调色盘/太阳都不在了、
+  4 个 tab 都在、站点 tab 的控件齐全、点「深色」真的切主题、没密码时上传给提示、
+  有密码时上传头像预览变成 `/uploads/...`、保存真的 POST 到 `/api/appearance` 且带上 navbar 四字段。
+- `ff-appearance-test.mts`（直接跑接口处理器，假 GitHub）：16 条断言 —— 只改标题时其它字段保留、
+  导航栏四字段写入、脏地址 / 空标题 / 越界模糊度 / 未知模式 / 错密码全部被挡、JSON 格式正确。
+- `probe-tabs.mjs`：逐个点 4 个 tab，确认内容都在（`hasAnyContent` 改动没弄坏别的 tab）。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
