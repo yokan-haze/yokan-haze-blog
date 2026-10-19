@@ -24,7 +24,6 @@ import { getEffectiveSidebarState } from "@/utils/sidebar-effective-utils";
 import Layout from "./Layout.astro";
 
 import "@/styles/expressive-code.css";
-import WriteFab from "@/components/common/WriteFab.astro";
 import { shouldShowWriteFab } from "@/utils/write-fab";
 
 interface Props {
@@ -183,9 +182,8 @@ const {
 
 <FloatingControls headings={headings} encrypted={encrypted} />
 
-<!-- 写作入口浮动按钮：只在首页与「本子」可见（站长 2026-10-19 要求）。
-     元素始终渲染（首帧用 hidden 控制显不显示），这样软导航来回切页时不会被丢掉。 -->
-<WriteFab hidden={!showWriteFab} />
+<!-- 「落笔」写作入口已经不在这里了：2026-10-19 站长说右下角不好看，
+     挪进了左侧栏的个人资料卡片（src/components/widget/Profile.astro）。 -->
 
 <!-- 移动端导航抽屉：渲染为 <body> 直系子元素，脱离导航栏的 transform 包含块才能铺满视口 -->
 <NavMenuPanel links={resolveNavMenuLinks()} />

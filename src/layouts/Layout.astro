@@ -610,14 +610,14 @@ const contentTopCss = `:root{--cfg-overlay-content-top:${overlayContentTop};--cf
 <script>
   import { initAdminUi } from "@/utils/admin-init";
   import { initLayout } from "@/utils/layout-init";
-  import { initWriteFabVisibility } from "@/utils/write-fab";
+  import { initWriteEntryVisibility } from "@/utils/write-fab";
 
   initLayout();
   // 后台（/admin/、/admin/list/、/admin/edit/）与文章页「就地编辑」的客户端逻辑。
   // 必须放在打包脚本里：主题用 Swup 做软导航，页面里的 is:inline 脚本换页后
   // 不会重跑，站长会遇到「后台页面必须刷新才有用」。详见 admin-init.ts 顶部。
   initAdminUi();
-  // 「落笔」按钮只该出现在首页和本子：它在 swup 容器之外，软导航不会自动换掉，
-  // 所以每次切页按当前地址再校正一次显隐。
-  initWriteFabVisibility();
+  // 「落笔」入口只该出现在首页和本子（现在它在左侧栏个人卡片里），
+  // 每次切页按当前地址再校正一次，防止移动端底部卡片残留。
+  initWriteEntryVisibility();
 </script>

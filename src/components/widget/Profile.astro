@@ -2,6 +2,7 @@
 import { Icon } from "astro-icon/components";
 import ImageWrapper from "@/components/common/ImageWrapper.astro";
 import { profileConfig } from "@/config/profileConfig";
+import { shouldShowWriteFab } from "@/utils/write-fab";
 import { encodeMailto, MAILTO_ONCLICK_SCRIPT } from "@/utils/email-utils";
 import { url } from "@/utils/url-utils";
 
@@ -11,6 +12,10 @@ interface Props {
 }
 const { style } = Astro.props;
 const className = Astro.props.class;
+// 「落笔」写作入口：只在首页与本子出现（站长 2026-10-19 要求），
+// 位置也从右下角浮动胶囊改到这张个人卡片里（站长选的位置）。
+// 侧栏在 swup 容器里，切页会重新渲染，所以 SSR 判断就够；兜底见 src/utils/write-fab.ts。
+const showWriteEntry = shouldShowWriteFab(Astro.url.pathname);
 ---
 
 <div class:list={["card-base", "p-3", className]} style={style}>
@@ -92,5 +97,16 @@ const className = Astro.props.class;
                     }
             })(profileConfig.links[0])}
         </div>
+        {showWriteEntry && (
+          <a
+            href="/admin/edit/"
+            aria-label="落笔：写一篇新文章"
+            title="落笔 · 写一篇新文章"
+            class="write-entry mt-2 flex items-center justify-center gap-2 btn-regular rounded-lg h-10 w-full text-sm font-bold active:scale-95 transition"
+          >
+            <Icon name="material-symbols:ink-pen" class="text-[1.15rem] opacity-70" />
+            <span class="tracking-wide">落笔</span>
+          </a>
+        )}
   </div>
 </div>
