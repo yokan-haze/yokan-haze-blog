@@ -244,6 +244,43 @@
 - 限制：上传的壁纸**不走构建期优化**（原格式、原体积），图片建议 AVIF/WebP；
   视频受 `/api/upload` 的 25MB 上限约束，建议先压到 1080p 以上。
 
+### 追加二（2026-10-19 下午）：壁纸上传上线 + 一个埋了很久的坑
+
+上线后逐项复查，发现面板里「电脑端 / 手机端壁纸」的缩略图在线上是空的。**继续挖下去发现根因不在面板：**
+
+> `src/assets/images/DesktopWallpaper/*`、`MobileWallpaper/*` 这 12 张壁纸图**从来没进过远程仓库**
+> （远端 `src/assets/images/` 下只有 `avatar.webp` 和 `logo/`，GitHub Contents API 对壁纸目录直接 404）。
+> 也就是说**线上站点一直没有壁纸图**——因为首页用的是 4K 背景视频（在 `public/assets/videos/` 里，那个确实推过），
+> 视频把画面全盖住了，所以一直没人发现。
+
+修法：用新写的小工具把文件补进仓库。
+
+```powershell
+# 用法：node push-files-via-api.mjs "<提交信息>" <文件...>
+node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 6）补进仓库" src/assets/images/DesktopWallpaper/d1.avif ...
+```
+
+为什么需要它：`push-via-api2.mjs` 是按「本地 commit 差异」算变更的，而这些图在本地**早就提交过**，
+所以从任何近期的基准 commit 都 diff 不出来 —— 这正是它们缺席好几轮部署的原因。
+`push-files-via-api.mjs` 直接按文件列表上传 blob + 建一次提交（内容相同的会跳过），专门补这种「本地有、远端没有」的文件。
+
+补进去之后，线上的壁纸图（`/_astro/d1...webp` 等 12 张）和面板缩略图全都正常了。
+
+### 另外两条教训（都很贵）
+
+1. **本地 `pnpm check` 必须看退出码，不要只看 grep**：`pnpm check | Select-String 'error' | Select-Object -First N`
+   只看了前几行 / 只看 `Result`，漏掉了 `- 1 error`（单数），结果 CI 的 `pnpm astro check` 闸门把我拦下来一次。
+   现在固定用 `"check exit=$LASTEXITCODE"`。
+2. **eager glob 的类型不一样**：`import.meta.glob(..., { eager: true })` 得到的是 `ImageMetadata`（不是函数），
+   别再 `typeof file === "function" ? await file() : file` —— 会得到 `never` 并让 `astro check` 报 ts(2349)。
+
+### 壁纸上传的最终形态
+
+- 壁纸 tab 三行：电脑端壁纸 / 手机端壁纸 / 背景视频，各自「换图 / 换视频」→ `/api/upload` → 预览 → 「保存壁纸」
+- 「恢复默认」= 写回 d1-d6 / m1-m6 / 4K 视频那套（旧文件不删，随时能回去）
+- 缩略图优先用构建期解析出的优化图 URL；拿不到时用 LQIP 渐变底 + 图片图标兜底
+- 上传的图走 `public/uploads/`（公共路径），所以 `toSrcPath()` 特意保留 `/uploads/` 前缀
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
