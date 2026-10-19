@@ -432,6 +432,61 @@ node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 
 `live-check-write-entry.mjs` 10 条全过（5 个页面 HTML 有无入口、线上渲染位置/流内、
 旧浮动按钮消失、滚动时随页面移动）。
 
+## 二·补六：2026-10-19 收尾：落笔卡位 / 置顶顺序 / 编辑器字号 / 就地编辑补封面
+
+站长四连（附了 /admin/edit/ 与就地编辑面板两张截图）：
+
+### 1. 「落笔」改成列表末尾的虚线卡位
+
+- 站长原话：「把按钮放在主页卡片中的最后一个卡片的空白处…等我发第四篇时按钮就会出现在第四篇文章上，
+  本子页面时就出现在本子的空白处」。
+- 做法：`PostPage.astro` 加 `writeEntry` 开关，在 `page.data.map(...)` 之后追加一块
+  `#write-entry`（虚线卡片 + ink-pen + 「落笔」+「写一篇新的」），尺寸跟文章卡片同级；
+  首页 `[...page].astro` 与本子 `notebook/[...page].astro` 传 `writeEntry`。
+  文章变多时它自动排在最后一张卡后面，永远不会压住卡片。
+- 顺手删掉：`src/utils/write-fab.ts`（客户端显隐那套不再需要）、
+  `Profile.astro` 里的入口（上一版放在个人卡片里，站长说不好看）。
+
+### 2. 首页置顶顺序：由旧到新
+
+- `getSortedPosts()` 是「置顶优先 → 发布日期降序（最新在前）」，所以最早的「青春」被挤到最后一格。
+- 站长要「第一个置顶的排最前面，依次往后」→ 首页在 filter 之后显式
+  `sort((a,b) => a.published - b.published)` 再 slice(0, 4)。
+
+### 3. 编辑器字号
+
+- 站长澄清：「我说的字号是正文里的」—— 之前我放大的是**标题**，现在标题**改回 1rem**
+  （`/admin/edit/` 的 `#title` 与就地编辑的 `#pe-title`）。
+- 新增**正文字号调节**：两个编辑器都有 `A− / 读数 / A+`，逻辑在 `admin-init.ts` 的
+  `initBodyFontControls()`：localStorage 键 `editorBodyFontSize`，范围 12–26px、默认 15px，
+  按钮 `data-font-step="±1"`、文本框 `data-body-font`、读数 `data-font-readout`。
+
+### 4. 就地编辑补齐封面与插图（和「落笔」一致）
+
+- 站长：「编辑文章时为什么没有封面，我如果先换一个封面都换不了；编辑和落笔是一体的，
+  不要出现落笔有的功能编辑没有」。
+- `PostInlineEditor.astro` 补了**封面行**（输入框 + 上传封面图 + 隐藏 file）和
+  **插入行**（上传图片 / 上传视频 + 状态行），并把说明文字改成「封面也在这里改」。
+- `admin-init.ts` 的 `initPostInlineEditor`：读原文时回填 `data.image`；
+  保存时 **提交 `image`**（原来只是把原值原样带回去，所以换不了封面）；
+  上传复用字节直传 + `insertAtCursor`，和 `/admin/edit/` 同一套行为。
+- 两个页面的体积提示也更新成「图片 ≤ 30MB、视频 ≤ 40MB；原图原样上传、不压缩」。
+
+### 验证
+
+- `astro check` 0 errors（exit 0）、`pnpm type-check` exit 0、`pnpm build` exit 0
+- `verify-round6.mjs`（本地 dist + mock）22 条断言全过：
+  首页 3 张置顶顺序 = 青春(10-09) → 岸宝(10-13) → 若我放生(10-14)；
+  落笔卡位是列表最后一个子元素、虚线、约 340×192；本子末尾也有，归档/标签/管理页都没有；
+  落笔页标题 16px、正文 15px、点两次 A+ 变 17px 且刷新后记住；
+  就地编辑封面/上传控件齐全、读原文回填封面、换封面后输入框变 `/uploads/...`、
+  上传图片插入 `![...](/uploads/...)`、保存 payload 的 `data.image` 是新封面
+- `live-check-round6.mjs`（线上）11 条全过：5 个页面 HTML 有无卡位、首页顺序、
+  卡位位置、`/admin/edit/` 标题 16px + 字号控件、文章页就地编辑的封面/上传/字号
+- ⚠ 本地仓库里 `2026-10-13-133540.md` / `2026-10-14-195638.md` 是 `pinned: false`（远端是 true），
+  所以本地首页只有 1 张卡；验证顺序时临时改成 true、跑完已还原成 false，**不要提交这两个文件的改动**。
+- 上线 commit：`6b7cb61`（远端），工作流 `39254370419` success。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
