@@ -318,6 +318,49 @@ node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 
 所以 `browser-sessions/` 下**所有 headless 验证脚本现在都带 `--disable-quic`**。
 以后线上复查再看到「整页都没有交互」，先加这个参数排除，别急着怀疑代码。
 
+## 二·补四：2026-10-19 夜深：设置后台并进面板 / 卡片标签删除
+
+站长原话：「把设置后台一并弄到设置里去，还有你上次说的卡片标签要删掉」。
+（注意：这两件事当天下午做过一次，站长先说「弄错了取消」让我全撤了，随后又要求照做 ——
+所以这一轮是**重新做**，不是改上一轮。）
+
+### 1. 「保存为全站默认」现在两个入口共用一套逻辑
+
+- 新文件 **`src/utils/site-settings-client.ts`**（唯一实现）：
+  `SETTING_KEYS`（15 项，和 /api/settings 白名单、主题真实的 localStorage 键一致）、
+  `readLocalSettings()`（把 `"true"`/`"0.8"` 还原成布尔/数字 —— 服务端不做隐式转换，类型不对会直接丢）、
+  `saveSiteSettings(password, settings?)`（POST /api/settings，解析回执，返回 `{ok,status,savedCount,error}`）、
+  `readStoredPassword()` / `rememberPassword()`（键仍是 `adminPassword`）。
+- **入口 A（新）**：右上角齿轮 → 站点 tab → 「全站默认外观」区块 + 「保存为全站默认（约 1 分钟生效）」按钮。
+  密码复用同一个输入框（和「保存到站点」共用 `adminPassword` 状态），不再需要跑去 /admin/。
+- **入口 B（旧）**：`/admin/`（`src/pages/admin.astro` + `admin-init.ts`）只保留 DOM 与表格渲染，
+  读取/提交都改成调共用模块 —— 两边不会再各维护一份白名单。
+- **接口修正**：`functions/api/settings.ts` 以前是**整体覆盖**（只保留 `_` 开头的注释键）。
+  面板只提交「这台浏览器里改过」的键，整体覆盖会把没提交的键清掉 → 构建时回退成代码默认值，
+  等于悄悄重置站长设置。现在保留已有项，只覆盖本次提交的键。
+
+### 2. 文章卡片上的标签删除了
+
+- `PostCard.astro`：删掉底部标签区块（`post-card-bottom-tags`）与相关计算
+  （`tagsPosition` / `tagCount` / `tagsBottomStyle`），PostMetadata 不再传 `tags`，尾部固定显示 stats。
+- `PostMeta.astro`：删掉标签渲染块与 props（`tags` / `showTags` / `maxTags` / `showNoTags` /
+  `hideTagsForMobile`）以及 `.post-meta-tags` 的 CSS。
+- 调用方 `PostPage.astro`、`posts/[...slug].astro`（封面变体 + 正文上方）同步去掉 `tags` 传参。
+- **标签数据本身没动**：frontmatter、`/tags/` 页面、RSS/JSON 元信息都在，老链接不 404。
+  以后想恢复显示，把 `PostMeta` 的按钮块加回来即可（配置项 `postListLayout.meta.showTags` 等仍留在 siteConfig 里）。
+
+### 验证（这一轮按「验证纪律」逐层过）
+
+| 层 | 脚本 | 结果 |
+|---|---|---|
+| 共用模块 | `ff-settings-client-test.mts` | 18 条断言全过（类型还原、请求形状、密码头、401 / 空密码 / 无设置不发请求） |
+| 接口处理器 | `ff-settings-api-test.mts` | 14 条全过（15 项写入且类型正确、脏值丢弃、已有项保留、401/400/503、tab 缩进 JSON） |
+| 界面（本地 dist + mock） | `verify-panel-defaults.mjs` | 19 条全过（面板按钮真的 POST、/admin/ 仍可用、卡片/文章页无标签、/tags/ 仍 200） |
+| 构建 | `pnpm check` / `type-check` / functions tsc / `pnpm build` | 全 exit 0；产物里 `post-card-bottom-tags`/`post-meta-tags`/`#随笔` 均为 0 |
+| 线上 | `live-check-round4.mjs` | 10 条全过（接口 401/健康检查、面板有按钮且点了有反馈、首页与文章页无标签、/tags/ 200） |
+
+上线 commit：`6a71b6e`（远端），工作流 `39240553276` success。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
