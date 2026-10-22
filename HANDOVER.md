@@ -507,6 +507,50 @@ node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 
 归档/标签/管理页没有、本子有、手机端可见且不溢出、无报错）；
 `live-check-entry-row.mjs` 10 条全过。上线 commit：`2ad067a`。
 
+## 二·补七：2026-10-22 正文编辑器改成 WPS 式（选中文字改字号）
+
+站长：「这个字号大小我不满意，我希望他像 wps 那样的修改，可以自己选择文字修改」。
+之前只有「整篇 A−/A+」，只能改整个编辑框的字号。
+
+### 做法
+
+- 新文件 **`src/utils/editor-richtext.ts`**：正文白板 + 工具条的唯一实现
+  - 白板 `contenteditable`：**可以直接打字**写 Markdown，也能鼠标拖选 / 双击选词
+  - 工具条：字号档位（15/16/17/18/20/22/24/28/32）+「套用」、`B` 加粗、颜色、清格式
+  - 底层仍是纯 Markdown；被单独改过的片段写成
+    `<span data-size="24">…</span>`、`<b class="rt-bold">…</b>`、`<span data-color="#e11d48">…</span>`
+- `/admin/edit/` 与文章页就地编辑面板都把 textarea 换成这套；
+  **提交源仍是 `#body` / `#pe-body`**（改成隐藏 input），原有发布逻辑一行没改
+- 样式：`src/styles/rich-text-editor.css`（工具条 + 白板，白板内按档位显示字号）；
+  `src/styles/markdown.css` 追加文章页的行内字号 / 加粗样式
+- 旧的「整篇 A−/A+」（`initBodyFontControls`）已退役，由 `initRichEditors()` 取代
+
+### 排查中修掉的四个真问题（都实测复现过，别再踩）
+
+1. **工具条取数用了 `document.querySelector`**：页面上可能同时有两条工具条
+   （落笔页 + 就地编辑），结果拿到第一条，把字号套到另一个编辑器上。
+   现在从 `btn.closest("[data-rt-toolbar]")` 取。
+2. **状态存在 `canvas.dataset.plain` 里**：`清格式` 按提交源重渲染时先把 dataset 同步成空，
+   于是内容被自己吞掉。现在模块内 `markdown` 变量是唯一真源，提交源只是镜像。
+3. **白板一开始是 `contenteditable=false`**：只能选字不能打字（等于不能写文章）。
+   已打开可编辑，并加 `input` 事件把「所见即所得」的 DOM 折回 Markdown。
+4. **读入已有文章后白板是空的**：初始化发生在表单填值之前，
+   之后没有任何东西通知编辑器。新增 `syncFromSource()`，读原文后调用。
+   （新建文章照旧：直接在白板里打字。）
+
+CSS 还有个坑：`.rt-canvas span[data-size]` 原来写的是 `font-size: inherit`，
+属性里的数字浏览器不会自动换算 —— 必须每个档位一条规则，否则白板里看不出效果。
+
+### 验证
+
+- `astro check` 0 errors、`pnpm type-check` exit 0、`pnpm build` exit 0
+- `verify-rt-final.mjs`（本地 dist + mock）10 条全过：白板可编辑、打字后提交源同步、
+  能选中一段、套 24px 后**白板里真的显示 24px**、提交源出现 `<span data-size="24">`、
+  加粗写成 `<b class="rt-bold">`、发布 payload 带标签、读入原文后白板有内容、无前端报错
+- `live-check-rt.mjs`（线上）7 条全过：编辑器/就地编辑都有白板与工具条、
+  线上选中一段套 24px 后白板显示 24px、提交源写入标签
+- 上线 commit：`3925f97`（远端），工作流 `39730499639` success
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
