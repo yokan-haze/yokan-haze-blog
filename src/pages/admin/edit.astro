@@ -107,40 +107,21 @@ const TYPES = [
 
       <div class="flex gap-2 items-start">
         <label class="text-sm text-75 w-16 pt-2">正文</label>
-        <div class="flex-1 min-w-0 flex flex-col gap-1" data-rt-editor>
-          <!-- WPS 式：先选中一段文字，再点工具条（站长 2026-10-22 要求） -->
-          <div class="rt-toolbar" data-rt-toolbar>
-            <span class="rt-group">
-              <span>字号</span>
-              <select data-rt-size class="rt-select">
-                  <option value="15">15</option>
-                  <option value="16">16</option>
-                  <option value="17">17</option>
-                  <option value="18">18</option>
-                  <option value="20">20</option>
-                  <option value="22">22</option>
-                  <option value="24">24</option>
-                  <option value="28">28</option>
-                  <option value="32">32</option>
-              </select>
-              <button type="button" data-rt-cmd="size" class="rt-btn">套用</button>
-            </span>
-            <span class="rt-group">
-              <button type="button" data-rt-cmd="bold" class="rt-btn rt-btn-bold">B</button>
-              <input type="color" data-rt-color value="#e11d48" class="rt-color" aria-label="文字颜色" />
-              <button type="button" data-rt-cmd="clear" class="rt-btn">清格式</button>
-            </span>
+        <div class="flex-1 min-w-0 flex flex-col gap-1">
+          <!-- 正文字号：站长 2026-10-19 要求「写正文时能自己调字号」 -->
+          <div class="flex items-center gap-1 text-xs text-50">
+            <span>字号</span>
+            <button type="button" data-font-step="-1" class="btn-regular rounded px-2 py-0.5">A−</button>
+            <span data-font-readout class="tabular-nums w-10 text-center">15px</span>
+            <button type="button" data-font-step="1" class="btn-regular rounded px-2 py-0.5">A+</button>
           </div>
-          <div
-            class="rt-canvas"
-            data-rt-canvas
-            tabindex="0"
-            role="textbox"
-            aria-multiline="true"
-            aria-label="正文：可选中文字后用上方工具条改字号"
-          ></div>
-          <!-- 提交源：白板改完同步到这里；id 仍是 #body，后台逻辑不用改 -->
-          <input type="hidden" id="body" data-body-source />
+          <textarea
+            id="body"
+            data-body-font
+            rows="24"
+            placeholder="# 标题&#10;&#10;正文用 Markdown 写。"
+            class="px-3 py-2 rounded-lg bg-(--btn-regular-bg) text-90 text-sm font-mono leading-6 w-full"
+          ></textarea>
         </div>
       </div>
 

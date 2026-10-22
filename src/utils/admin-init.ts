@@ -29,8 +29,6 @@ import {
 	saveSiteSettings,
 } from "@/utils/site-settings-client";
 
-import { createRichTextEditor } from "@/utils/editor-richtext";
-
 type Json = Record<string, unknown>;
 
 interface ApiResult {
@@ -103,49 +101,57 @@ async function postBinary(url: string, password: string, file: File): Promise<Ap
 	return { status: response.status, body: await readJson(response) };
 }
 
-// ── 正文编辑器：像 WPS 那样选中文字改格式（站长 2026-10-22）──
-// 原来的「整篇 A−/A+」只能调整个编辑框的字号，站长要的是「自己选择文字修改」。
-// 现在正文是一个白板（data-rt-canvas）+ 工具条（data-rt-toolbar），底层仍是 Markdown 文本，
-// 被单独改过的片段写成 <span data-size="18">…</span> 这类标签，文章页也能认。
-// 白板的实现见 src/utils/editor-richtext.ts。
+// ── 编辑器正文字号（站长 2026-10-19：「写正文时可以自己调节字号」）──
+// 两个编辑器共用一套：按钮带 data-font-step="±1"，文本框带 data-body-font，
+// 读数带 data-font-readout；值存 localStorage，下次打开还是这个字号。
+const BODY_FONT_KEY = "editorBodyFontSize";
+const BODY_FONT_DEFAULT = 15;
+const BODY_FONT_MIN = 12;
+const BODY_FONT_MAX = 26;
 
-interface RichTextHandle {
-	root: HTMLElement;
-	setValue: (value: string) => void;
-	getValue: () => string;
-	focus: () => void;
-	insert: (snippet: string) => void;
-	syncFromSource: () => void;
+function readBodyFontSize(): number {
+	try {
+		const raw = Number(localStorage.getItem(BODY_FONT_KEY));
+		if (Number.isFinite(raw) && raw >= BODY_FONT_MIN && raw <= BODY_FONT_MAX) return Math.round(raw);
+	} catch {
+		// 隐私模式读不到就用默认
+	}
+	return BODY_FONT_DEFAULT;
 }
 
-const richEditors = new Map<HTMLElement, RichTextHandle>();
-
-function initRichEditors(): void {
-	for (const root of Array.from(document.querySelectorAll<HTMLElement>("[data-rt-editor]"))) {
-		if (root.dataset.rtBound === "1") continue;
-		const toolbar = root.querySelector<HTMLElement>("[data-rt-toolbar]");
-		const canvas = root.querySelector<HTMLElement>("[data-rt-canvas]");
-		const hidden = root.querySelector<HTMLInputElement>("input[type=hidden]");
-		if (!toolbar || !canvas || !hidden) continue;
-
-		// 交出「存值 + 读值」的对象；textarea 可能稍后才被创建（表单那边是先绑 DOM），
-		// 所以用隐藏 input 当唯一提交源，外面拿 .value 读写。
-		const editor = createRichTextEditor({ toolbar, canvas, textarea: hidden });
-		root.dataset.rtBound = "1";
-		richEditors.set(root, { root, ...editor });
+function applyBodyFontSize(px: number): void {
+	const size = Math.max(BODY_FONT_MIN, Math.min(BODY_FONT_MAX, Math.round(px)));
+	try {
+		localStorage.setItem(BODY_FONT_KEY, String(size));
+	} catch {
+		// 写不进去也不影响本次
+	}
+	for (const area of document.querySelectorAll<HTMLTextAreaElement>("textarea[data-body-font]")) {
+		area.style.fontSize = size + "px";
+	}
+	for (const readout of document.querySelectorAll<HTMLElement>("[data-font-readout]")) {
+		readout.textContent = size + "px";
 	}
 }
 
-/** 找到某张表单里的白板：它内部的提交源 id 就是 body / pe-body */
-function richEditorFor(sourceId: string): RichTextHandle | null {
-	for (const [root, handle] of richEditors) {
-		const source = root.querySelector("input[type=hidden]");
-		if (source?.id === sourceId) return handle;
+function initBodyFontControls(): void {
+	for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-font-step]")) {
+		if (btn.dataset.fontBound === "1") return;
 	}
-	return null;
+	const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-font-step]"));
+	if (!buttons.length) return;
+	for (const btn of buttons) {
+		if (btn.dataset.fontBound === "1") continue;
+		btn.dataset.fontBound = "1";
+		btn.addEventListener("click", () => {
+			const step = Number(btn.dataset.fontStep ?? "0") || 0;
+			applyBodyFontSize(readBodyFontSize() + step);
+		});
+	}
+	applyBodyFontSize(readBodyFontSize());
 }
 
-// ── /admin/ 设置保存 ─────────────────────────────────────────// ── /admin/ 设置保存 ─────────────────────────────────────────
+// ── /admin/ 设置保存 ─────────────────────────────────────────
 
 function initSettingsPage(): void {
 	const savePwBtn = byId<HTMLButtonElement>("savePw");
@@ -339,8 +345,7 @@ function initEditPage(): void {
 	const tagsEl = byId<HTMLInputElement>("tags");
 	const categoryEl = byId<HTMLInputElement>("category");
 	const draftEl = byId<HTMLInputElement>("draft");
-	// 正文的提交源现在的隐藏 input（白板负责同步内容过来）
-	const bodyEl = byId<HTMLInputElement>("body");
+	const bodyEl = byId<HTMLTextAreaElement>("body");
 	const loadState = byId("loadState");
 	const reloadBtn = byId<HTMLButtonElement>("reload");
 	// 2026-10-18 新增：置顶开关、封面字段、图片/视频上传
@@ -399,7 +404,6 @@ function initEditPage(): void {
 			if (pinnedEl) pinnedEl.checked = data.pinned === true;
 			if (imageEl) imageEl.value = String(data.image ?? "");
 			bodyEl.value = String(res.body.body ?? "");
-			richEditorFor("body")?.syncFromSource();
 			loadState.textContent = `✓ 已读入 ${file} —— 改完点发布覆盖（历史在 Git 里）`;
 		} catch (e) {
 			loadState.textContent = `读取失败：${message(e)}`;
@@ -447,9 +451,6 @@ function initEditPage(): void {
 
 			outEl.textContent = "提交中……";
 			try {
-				// 正文以白板里的为准（白板会把内容同步回 bodyEl，这里再取一次保险）
-				const rich = richEditorFor("body");
-				if (rich) bodyEl.value = rich.getValue();
 				const res = await postJson("/api/content", password, {
 					type,
 					filename: filenameEl.value.trim() || undefined,
@@ -478,15 +479,16 @@ function initEditPage(): void {
 		uploadStateEl.textContent = text;
 	};
 
-	// 插图：交给白板插到当前选区之后（隐藏 input 没有光标位置）
 	const insertAtCursor = (snippet: string): void => {
-		const rich = richEditorFor("body");
-		if (rich) {
-			rich.insert(snippet);
-			bodyEl.value = rich.getValue();
-			return;
-		}
-		bodyEl.value = `${bodyEl.value}${bodyEl.value.endsWith("\n") ? "" : "\n"}${snippet}\n`;
+		const start = bodyEl.selectionStart ?? bodyEl.value.length;
+		const end = bodyEl.selectionEnd ?? start;
+		const before = bodyEl.value.slice(0, start);
+		const after = bodyEl.value.slice(end);
+		const block = `${before === "" || before.endsWith("\n") ? "" : "\n"}${snippet}\n`;
+		bodyEl.value = before + block + after;
+		const pos = (before + block).length;
+		bodyEl.focus();
+		bodyEl.setSelectionRange(pos, pos);
 	};
 
 	const uploadFile = async (file: File, kind: "cover" | "image" | "video"): Promise<void> => {
@@ -582,8 +584,7 @@ function initPostInlineEditor(): void {
 	const categoryEl = byId<HTMLInputElement>("pe-category");
 	const draftEl = byId<HTMLInputElement>("pe-draft");
 	const pinnedEl = byId<HTMLInputElement>("pe-pinned");
-	// 正文的提交源（隐藏 input，由白板同步）
-	const bodyEl = byId<HTMLInputElement>("pe-body");
+	const bodyEl = byId<HTMLTextAreaElement>("pe-body");
 	const pwEl = byId<HTMLInputElement>("pe-pw");
 	const statusEl = byId("pe-status");
 	// 2026-10-19 补：封面 + 正文插图（和「落笔」那页保持一致，站长反馈「编辑时没有封面」）
@@ -663,7 +664,6 @@ function initPostInlineEditor(): void {
 			if (pinnedEl) pinnedEl.checked = data.pinned === true;
 			if (imageEl) imageEl.value = String(data.image ?? "");
 			bodyEl.value = String(res.body.body ?? "");
-			richEditorFor("pe-body")?.syncFromSource();
 			saveBtn.disabled = false;
 			setStatus("✓ 已读入原文 —— 改完点「保存到仓库」（历史在 Git 里）");
 		} catch (e) {
@@ -716,9 +716,6 @@ function initPostInlineEditor(): void {
 		// 输入框没动过时它的值就是读回来的原值，等价于「保持不变」。
 		if (imageEl) data.image = imageEl.value.trim();
 
-		const rich = richEditorFor("pe-body");
-		if (rich) bodyEl.value = rich.getValue();
-
 		state.busy = true;
 		saveBtn.disabled = true;
 		setStatus("提交中……");
@@ -747,15 +744,16 @@ function initPostInlineEditor(): void {
 		if (uploadStateEl) uploadStateEl.textContent = text;
 	};
 
-	// 插图：交给白板插到当前选区之后（隐藏 input 没有光标位置）
 	const insertAtCursor = (snippet: string): void => {
-		const rich = richEditorFor("pe-body");
-		if (rich) {
-			rich.insert(snippet);
-			bodyEl.value = rich.getValue();
-			return;
-		}
-		bodyEl.value = `${bodyEl.value}${bodyEl.value.endsWith("\n") ? "" : "\n"}${snippet}\n`;
+		const start = bodyEl.selectionStart ?? bodyEl.value.length;
+		const end = bodyEl.selectionEnd ?? start;
+		const before = bodyEl.value.slice(0, start);
+		const after = bodyEl.value.slice(end);
+		const block = `${before === "" || before.endsWith("\n") ? "" : "\n"}${snippet}\n`;
+		bodyEl.value = before + block + after;
+		const pos = (before + block).length;
+		bodyEl.focus();
+		bodyEl.setSelectionRange(pos, pos);
 	};
 
 	const uploadFile = async (file: File, kind: "cover" | "image" | "video"): Promise<void> => {
@@ -871,9 +869,9 @@ function runAdminUi(): void {
 		console.error("[admin] 文章就地编辑初始化失败", e);
 	}
 	try {
-		initRichEditors();
+		initBodyFontControls();
 	} catch (e) {
-		console.error("[admin] 正文编辑器初始化失败", e);
+		console.error("[admin] 正文字号控件初始化失败", e);
 	}
 }
 
