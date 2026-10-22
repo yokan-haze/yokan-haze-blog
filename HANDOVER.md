@@ -507,6 +507,18 @@ node push-files-via-api.mjs "add: 把 12 张原创壁纸图（桌面 6 / 手机 
 归档/标签/管理页没有、本子有、手机端可见且不溢出、无报错）；
 `live-check-entry-row.mjs` 10 条全过。上线 commit：`2ad067a`。
 
+#### 2026-10-22 试过又撤回：WPS 式正文白板
+
+当天把正文编辑器改成了「白板 + 工具条」（选中文字单独改字号 / 加粗 / 颜色，
+实现见当时的 `src/utils/editor-richtext.ts`），上线后站长回复「不对变回去」，**已整段 revert**
+（commit `3e5dcb8` / 远端 `999c432`）。现在的正文编辑器回到：
+**textarea + 「整篇字号 A−/A+」**（localStorage 键 `editorBodyFontSize`，12–26px，默认 15）。
+
+如果以后还要做「选中文字改字号」，那次踩过的坑值得先看一眼（都已写进历史提交 `92da945`）：
+工具条取数别用 `document.querySelector`（页面上可能有两条）、别把正文状态存在 `dataset` 里、
+白板要 `contenteditable` 打开才能打字、读入原文后要主动 `syncFromSource()`、
+`.rt-canvas span[data-size]` 必须每个档位一条 `font-size` 规则（属性值浏览器不会自动换算）。
+
 ## 三、站长明确要求、还没做的
 
 （本轮四条已全部完成，暂无其它待办。等站长在线上验收。）
