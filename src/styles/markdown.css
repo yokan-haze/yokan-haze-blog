@@ -222,3 +222,21 @@ body.wallpaper-transparent .custom-md {
   }
 }
 
+
+
+/* ── 行内格式：编辑器里选中文字改字号 / 颜色 / 加粗，写进正文的标签 ──
+   来源：/admin/edit/ 或文章页就地编辑的「白板」。写法形如
+   <span data-size="20">大字</span>、<span data-color="#e11d48">红字</span>、
+   <b class="rt-bold">加粗</b>。不同浏览器对 attr() 数值的支持不一，
+   所以列出编辑器提供的全部字号档位做兜底。 */
+:is(.markdown-content, .custom-md) span[data-size="15"] { font-size: 15px; }
+:is(.markdown-content, .custom-md) span[data-size="16"] { font-size: 16px; }
+:is(.markdown-content, .custom-md) span[data-size="17"] { font-size: 17px; }
+:is(.markdown-content, .custom-md) span[data-size="18"] { font-size: 18px; }
+:is(.markdown-content, .custom-md) span[data-size="20"] { font-size: 20px; }
+:is(.markdown-content, .custom-md) span[data-size="22"] { font-size: 22px; }
+:is(.markdown-content, .custom-md) span[data-size="24"] { font-size: 24px; }
+:is(.markdown-content, .custom-md) span[data-size="28"] { font-size: 28px; }
+:is(.markdown-content, .custom-md) span[data-size="32"] { font-size: 32px; }
+
+:is(.markdown-content, .custom-md) b.rt-bold { font-weight: 700; }
